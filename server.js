@@ -16,11 +16,16 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+const MongoStore = require('connect-mongo');
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'college-project-secret',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/disaster_alert_mvp',
+    collectionName: 'sessions'
+  })
 }));
 
 app.use((req, res, next) => {
