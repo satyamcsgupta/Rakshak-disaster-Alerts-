@@ -16,6 +16,17 @@ const resourceSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  city: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    default: ''
+  },
   address: {
     type: String,
     trim: true,

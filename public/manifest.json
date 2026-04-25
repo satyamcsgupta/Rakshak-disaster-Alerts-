@@ -1,6 +1,6 @@
 {
-  "name": "Suraksha Alert",
-  "short_name": "Suraksha",
+  "name": "Rakshak",
+  "short_name": "Rakshak",
   "description": "Multilingual Disaster Alert & SOS Platform",
   "start_url": "/",
   "display": "standalone",

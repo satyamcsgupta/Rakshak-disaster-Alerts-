@@ -34,7 +34,7 @@ const parseCoordinate = (value) => {
 
 exports.homePage = (req, res) => {
   res.render('home', {
-    pageTitle: 'Multilingual Disaster Alert Platform',
+    pageTitle: 'Rakshak - Multilingual Disaster Alert Platform',
     highlightFeatures: [
       {
         title: 'Instant Local Translation',
@@ -196,14 +196,25 @@ const setSessionPreferredLanguage = (req, language) => {
 
 exports.userAlertList = async (req, res) => {
   const selectedState = req.query.state || req.session.user?.state || 'Maharashtra';
+  const selectedCity = req.query.city || req.session.user?.city || '';
   const selectedLanguage = getPreferredLanguage(req);
   if (req.query.language && languageNames.includes(req.query.language)) {
     setSessionPreferredLanguage(req, selectedLanguage);
   }
+
+  const alertQuery = { state: selectedState };
+  const resourceQuery = { state: selectedState, isActive: true };
+
+  if (selectedCity) {
+    // Optional: Filter by city if available
+    // alertQuery.city = selectedCity; 
+    // resourceQuery.city = selectedCity;
+  }
+
   const [alerts, rawOfficialAlerts, resources, weather] = await Promise.all([
-    Alert.find({ state: selectedState }).sort({ createdAt: -1 }),
+    Alert.find(alertQuery).sort({ createdAt: -1 }),
     fetchOfficialAlerts(selectedState),
-    require('../models/Resource').find({ state: selectedState, isActive: true }),
+    require('../models/Resource').find(resourceQuery),
     require('../services/weatherService').getWeatherData(selectedState)
   ]);
   const officialAlerts = await Promise.all((await translateOfficialAlerts(rawOfficialAlerts, selectedLanguage)).map(async (alert) => ({

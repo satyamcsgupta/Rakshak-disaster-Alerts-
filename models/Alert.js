@@ -16,6 +16,11 @@ const alertSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  city: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   severity: {
     type: String,
     enum: ['High', 'Medium', 'Low'],

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'suraksha-v1';
+const CACHE_NAME = 'rakshak-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/css/style.css',

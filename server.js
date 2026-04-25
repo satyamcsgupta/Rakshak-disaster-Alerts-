@@ -6,7 +6,7 @@ const connectDB = require('./config/db');
 const ensureDefaultAdmin = require('./services/adminSeedService');
 
 dotenv.config();
-connectDB().then(() => ensureDefaultAdmin()).catch(() => {});
+connectDB().then(() => ensureDefaultAdmin()).catch(err => console.error('Seeding error:', err));
 
 const app = express();
 

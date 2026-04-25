@@ -13,7 +13,7 @@ const filterForm = document.getElementById('filterForm');
 const alertContent = document.getElementById('alertContent');
 
 /* ── Constants ── */
-const DARK_MODE_KEY = 'surakshaDarkMode';
+const DARK_MODE_KEY = 'rakshakDarkMode';
 const ACCESSIBILITY_MODE_KEY = 'disasterhelpAccessibilityMode';
 
 const stateCenters = [
@@ -475,7 +475,7 @@ const handleFilterSubmit = async (e) => {
 /* ── 6. Sharing ── */
 const shareWhatsApp = (title, url) => {
   const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
-  const text = encodeURIComponent(`🚨 *Suraksha Alert*: ${title}\nCheck details here: ${fullUrl}`);
+  const text = encodeURIComponent(`🚨 *Rakshak Alert*: ${title}\nCheck details here: ${fullUrl}`);
   window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
 };
 

@@ -3,12 +3,16 @@ const { states } = require('./alertController');
 const stateCoordinates = require('../config/stateCoordinates');
 
 exports.createSOS = async (req, res) => {
-  const { userName, state, latitude, longitude } = req.body;
+  const { userName, state, city, latitude, longitude, contactNumber } = req.body;
+  const userId = req.session.user ? req.session.user.id : null;
 
   await SOS.create({
-    userName: userName || 'Anonymous',
+    user: userId,
+    userName: userName || req.session.user?.name || 'Anonymous',
+    contactNumber: contactNumber || req.session.user?.phone || '',
     state,
-    distressMessage: 'I am in trouble',
+    city: city || req.session.user?.city || '',
+    distressMessage: req.body.distressMessage || 'I am in trouble',
     latitude: latitude || null,
     longitude: longitude || null
   });

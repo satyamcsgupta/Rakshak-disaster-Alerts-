@@ -1,15 +1,30 @@
 const mongoose = require('mongoose');
 
 const sosSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   userName: {
     type: String,
     trim: true,
     default: 'Anonymous'
   },
+  contactNumber: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   state: {
     type: String,
     required: true,
     trim: true
+  },
+  city: {
+    type: String,
+    trim: true,
+    default: ''
   },
   distressMessage: {
     type: String,
