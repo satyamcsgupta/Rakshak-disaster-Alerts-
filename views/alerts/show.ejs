@@ -1,0 +1,113 @@
+<%- include('../partials/header') %>
+
+<section class="details-layout">
+  <article class="details-panel">
+    <div class="card-topline">
+      <span class="badge <%= alert.severity.toLowerCase() %>"><%= alert.severity %></span>
+      <span><%= alert.state %></span>
+    </div>
+    <h1><%= alert.title %></h1>
+    <% if (selectedLanguage !== 'English') { %>
+      <p class="translation-note">Showing this alert in <strong><%= selectedLanguage %></strong>.</p>
+    <% } %>
+    <p class="muted"><%= alert.disasterType %> alert</p>
+    <p class="alert-summary detail-summary"><%= guidance.summary %></p>
+
+    <button
+      class="voice-btn voice-btn-large"
+      type="button"
+      data-language="<%= selectedLanguage %>"
+      data-speak="<%= `${alert.title}. ${alert.disasterType} alert for ${alert.state}. Severity ${alert.severity}. ${guidance.summary}. ${localizedMessage}. Immediate actions. ${guidance.immediateActions.join('. ')}. Precautions. ${alert.precautions}` %>"
+    >
+      Listen to Alert
+    </button>
+
+    <section class="guidance-panel">
+      <h2>What to do now</h2>
+      <ul class="guidance-list">
+        <% guidance.immediateActions.forEach((step) => { %>
+          <li><%= step %></li>
+        <% }) %>
+      </ul>
+    </section>
+
+    <section class="guidance-panel">
+      <h2>Avoid right now</h2>
+      <ul class="guidance-list">
+        <% guidance.avoidActions.forEach((step) => { %>
+          <li><%= step %></li>
+        <% }) %>
+      </ul>
+    </section>
+
+    <h2>Disaster Information</h2>
+    <p><%= localizedMessage %></p>
+
+    <h2>Precautions</h2>
+    <p><%= alert.precautions %></p>
+
+    <section class="guidance-grid">
+      <article class="mini-panel">
+        <h2>Preparedness Note</h2>
+        <p><%= guidance.preparednessNote %></p>
+      </article>
+      <article class="mini-panel">
+        <h2>Severity Note</h2>
+        <p><%= guidance.severityNote %></p>
+      </article>
+    </section>
+
+    <section class="guidance-panel">
+      <h2>Emergency Kit Checklist</h2>
+      <div class="guidance-strip">
+        <% guidance.checklist.forEach((item) => { %>
+          <span><%= item %></span>
+        <% }) %>
+      </div>
+    </section>
+
+    <div class="meta-list">
+      <p><strong>Language:</strong> <%= selectedLanguage %></p>
+      <p><strong>Created:</strong> <%= alert.createdAt.toLocaleString() %></p>
+    </div>
+  </article>
+
+  <aside class="side-panel">
+    <h2>Emergency SOS</h2>
+    <p>If you are affected by this alert, submit a distress request for <%= alert.state %>.</p>
+    <form action="/sos" method="POST" id="sosForm" class="stacked-form">
+      <input type="hidden" name="state" value="<%= alert.state %>">
+      <input type="hidden" name="latitude" id="latitude">
+      <input type="hidden" name="longitude" id="longitude">
+      <label>
+        Name optional
+        <input type="text" name="userName" placeholder="Your name">
+      </label>
+      <button class="btn btn-danger" type="submit">I am in trouble</button>
+    </form>
+
+    <div class="side-section">
+      <h2>Safe Check-in</h2>
+      <p>Let others know you are safe in this area.</p>
+      <form action="/alerts/<%= alert._id %>/safe" method="POST" class="stacked-form">
+        <button class="btn btn-primary" type="submit">Mark Myself as Safe</button>
+      </form>
+    </div>
+
+    <section class="side-section">
+      <h2>Helplines</h2>
+      <div class="helpline-list">
+        <% guidance.helplines.forEach((helpline) => { %>
+          <div class="helpline-item">
+            <span><%= helpline.label %></span>
+            <strong><%= helpline.number %></strong>
+          </div>
+        <% }) %>
+      </div>
+    </section>
+
+    <a class="small-link" href="/alerts?state=<%= encodeURIComponent(alert.state) %>&language=<%= selectedLanguage %>">Back to alerts</a>
+  </aside>
+</section>
+
+<%- include('../partials/footer') %>

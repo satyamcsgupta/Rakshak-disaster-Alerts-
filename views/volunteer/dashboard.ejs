@@ -1,0 +1,301 @@
+<%- include('../partials/header') %>
+
+<div class="volunteer-dashboard-layout">
+  <!-- Sidebar / Request List -->
+  <aside class="request-sidebar">
+    <div class="sidebar-header">
+      <h2>Local SOS Requests</h2>
+      <div class="filter-sort-controls">
+        <select id="statusFilter" class="small-select">
+          <option value="All">All Status</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+        </select>
+        <select id="sortControl" class="small-select">
+          <option value="newest">Newest First</option>
+          <option value="urgent">Urgent First</option>
+          <option value="nearest">Nearest First</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="sosList" class="sos-list-container">
+      <!-- AJAX populated cards -->
+      <div class="list-loading">Loading requests...</div>
+    </div>
+  </aside>
+
+  <!-- Main Content: Map and Details -->
+  <main class="dashboard-main">
+    <section class="stats-cards-row">
+      <div class="stat-pill">
+        <span class="pill-label">Nearby</span>
+        <strong id="nearbyCount">0</strong>
+      </div>
+      <div class="stat-pill">
+        <span class="pill-label">Active</span>
+        <strong id="activeCount">0</strong>
+      </div>
+      <div class="stat-pill">
+        <span class="pill-label">Resolved</span>
+        <strong id="resolvedCount">0</strong>
+      </div>
+      <button id="toggleAvailabilityBtn" class="btn btn-small <%= volunteer.isAvailable ? 'btn-primary' : 'btn-secondary' %>">
+        <%= volunteer.isAvailable ? 'Available' : 'On Break' %>
+      </button>
+      <button id="showHelpBtn" class="btn btn-secondary btn-small" title="Training Guide">📖 Guide</button>
+    </section>
+
+    <div class="map-container-wrap">
+      <div id="volunteerMap" class="full-map"></div>
+      <div id="mapOverlay" class="map-overlay-hint">Select a request to view details</div>
+    </div>
+
+    <!-- Onboarding / Training Modal -->
+    <div id="tourModal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center;">
+      <article class="modal-card tour-card" style="background: white; width: 90%; max-width: 500px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.4); border: 4px solid var(--primary);">
+        <div class="modal-header" style="padding: 24px; border-bottom: 1px solid #eee; background: var(--primary); color: white;">
+          <h2 style="margin: 0;">Responder Training 🛡️</h2>
+        </div>
+        <div class="modal-body" style="padding: 30px;">
+          <div id="tourStepContent">
+            <!-- Dynamic steps -->
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 20px; background: #f8fafc; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+          <span id="tourProgress" style="font-size: 0.85rem; font-weight: 800; color: var(--primary);">Step 1 of 4</span>
+          <div class="actions">
+            <button id="skipTour" class="btn btn-secondary btn-small">Skip</button>
+            <button id="nextTourStep" class="btn btn-primary btn-small">Next Step</button>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- Side Panel / Detail View (Hidden by default) -->
+    <div id="detailPanel" class="sos-detail-panel">
+      <button class="close-panel-btn" id="closeDetailPanel">&times;</button>
+      <div id="detailContent">
+        <!-- AJAX populated -->
+        <p class="muted">Select a request to see more information.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<style>
+  .volunteer-dashboard-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    height: calc(100vh - 80px); /* Adjust based on header height */
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .request-sidebar {
+    background: white;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .filter-sort-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .small-select {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    flex: 1;
+  }
+
+  .sos-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* SOS Card Styles */
+  .sos-card {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .sos-card:hover {
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transform: translateY(-2px);
+  }
+
+  .sos-card.selected {
+    border-color: var(--primary);
+    background: white;
+    box-shadow: 0 0 0 2px var(--primary-light), 0 8px 24px rgba(15, 118, 110, 0.1);
+  }
+
+  .urgency-tag {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 0.65rem;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .urgency-tag.critical { background: #fee2e2; color: #991b1b; }
+  .urgency-tag.high { background: #ffedd5; color: #9a3412; }
+  .urgency-tag.medium { background: #fef9c3; color: #854d0e; }
+  .urgency-tag.low { background: #f0fdf4; color: #166534; }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .status-dot.pending { background: #ef4444; }
+  .status-dot.in-progress { background: #f59e0b; }
+  .status-dot.resolved { background: #10b981; }
+
+  .dashboard-main {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stats-cards-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .stat-pill {
+    background: white;
+    padding: 8px 16px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+  }
+
+  .pill-label { color: var(--muted); }
+
+  .map-container-wrap {
+    flex: 1;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  }
+
+  .full-map {
+    width: 100%;
+    height: 100%;
+  }
+
+  .map-overlay-hint {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.8);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 99px;
+    font-size: 0.8rem;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Detail Panel */
+  .sos-detail-panel {
+    position: absolute;
+    top: 20px;
+    right: -420px; /* Hidden */
+    width: 400px;
+    bottom: 20px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+    z-index: 1001;
+    transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sos-detail-panel.is-visible {
+    right: 20px;
+  }
+
+  .close-panel-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--muted);
+  }
+
+  /* Animation for glows */
+  @keyframes glow {
+    0% { box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(15, 118, 110, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(15, 118, 110, 0); }
+  }
+
+  .sos-card.in-progress {
+    animation: glow 2s infinite;
+  }
+
+  @media (max-width: 900px) {
+    .volunteer-dashboard-layout {
+      grid-template-columns: 1fr;
+    }
+    .request-sidebar {
+      height: 40vh;
+    }
+    .sos-detail-panel {
+      width: calc(100% - 40px);
+      right: -100%;
+    }
+  }
+</style>
+
+<!-- Pass volunteer state to script -->
+<script>
+  window.VOLUNTEER_STATE = "<%= volunteer.state %>";
+</script>
+<script src="/js/volunteer.js"></script>
+
+<%- include('../partials/footer') %>

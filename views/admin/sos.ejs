@@ -1,0 +1,103 @@
+<%- include('../partials/header') %>
+
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">Admin side</p>
+    <h1>SOS Requests</h1>
+  </div>
+  <a class="btn btn-secondary" href="/admin">Dashboard</a>
+</section>
+
+<section class="content-panel map-panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">SOS map</p>
+      <h2>Emergency Request Locations</h2>
+    </div>
+    <div class="map-header-actions">
+      <span class="map-count-pill"><%= (sosMapData || []).length %> mapped requests</span>
+      <span class="muted">Live coordinates when shared, state center otherwise</span>
+    </div>
+  </div>
+  <div class="map-shell admin-map-shell">
+    <div class="map-frame">
+      <div
+        id="sosMap"
+        class="map-canvas"
+        data-markers='<%- JSON.stringify(sosMapData || []) %>'
+      ></div>
+      <% if ((sosMapData || []).length === 0) { %>
+        <div class="map-empty-state">
+          <strong>No SOS locations yet</strong>
+          <span>New requests will appear here as soon as users submit an SOS.</span>
+        </div>
+      <% } %>
+    </div>
+    <aside class="map-sidebar">
+      <div class="map-legend">
+        <h3>Status Legend</h3>
+        <div class="legend-list">
+          <span><i class="legend-dot high"></i>Pending</span>
+          <span><i class="legend-dot medium"></i>In progress</span>
+          <span><i class="legend-dot low"></i>Resolved</span>
+          <span><i class="legend-dot fallback"></i>State fallback</span>
+        </div>
+      </div>
+      <div class="map-insight-card">
+        <h3>Response Hint</h3>
+        <p>Open a marker for the request status, time, location quality, and a directions link.</p>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="content-panel">
+  <% if (requests.length === 0) { %>
+    <p class="muted">No SOS requests received yet.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>State</th>
+            <th>Message</th>
+            <th>Status</th>
+            <th>Coordinates</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% requests.forEach((request) => { %>
+            <tr>
+              <td><%= request.userName %></td>
+              <td><%= request.state %></td>
+              <td><%= request.distressMessage %></td>
+              <td>
+                <form action="/admin/sos/<%= request._id %>/status" method="POST" class="status-form">
+                  <select name="status" onchange="this.form.submit()">
+                    <% ['Pending', 'In Progress', 'Resolved'].forEach((status) => { %>
+                      <option value="<%= status %>" <%= request.status === status ? 'selected' : '' %>><%= status %></option>
+                    <% }) %>
+                  </select>
+                </form>
+              </td>
+              <td>
+                <% if (request.latitude && request.longitude) { %>
+                  <%= request.latitude %>, <%= request.longitude %>
+                  <br>
+                  <a href="https://www.google.com/maps/dir/?api=1&destination=<%= request.latitude %>,<%= request.longitude %>" target="_blank" class="small-link">🧭 Open in Maps</a>
+                <% } else { %>
+                  <span class="muted">Not shared</span>
+                <% } %>
+              </td>
+              <td><%= request.createdAt.toLocaleString() %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

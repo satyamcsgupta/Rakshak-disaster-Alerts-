@@ -1,0 +1,148 @@
+<%- include('../partials/header') %>
+
+<div class="panel-header">
+  <div class="page-heading">
+    <p class="eyebrow">Overview</p>
+    <h1>Command Center</h1>
+  </div>
+  <div class="button-row">
+    <a href="/admin/new-alert" class="btn btn-primary">Create New Alert</a>
+  </div>
+</div>
+
+<!-- Premium Stat Cards -->
+<div class="admin-stats-grid">
+  <div class="admin-stat-card card-alerts">
+    <span class="stat-icon">📢</span>
+    <span class="stat-label">Total Alerts</span>
+    <div class="stat-value"><%= alertCount %></div>
+  </div>
+  <div class="admin-stat-card card-sos">
+    <span class="stat-icon">🆘</span>
+    <span class="stat-label">Distress Requests</span>
+    <div class="stat-value"><%= sosCount %></div>
+  </div>
+  <div class="admin-stat-card card-high">
+    <span class="stat-icon">⚠️</span>
+    <span class="stat-label">High Severity</span>
+    <div class="stat-value"><%= highSeverityCount %></div>
+  </div>
+  <div class="admin-stat-card card-new-sos">
+    <span class="stat-icon">🔔</span>
+    <span class="stat-label">New SOS</span>
+    <div class="stat-value"><%= newSosCount %></div>
+  </div>
+</div>
+
+<!-- Severity Distribution & Quick Actions -->
+<div class="details-layout">
+  <div class="content-panel">
+    <div class="severity-bar-wrap">
+      <h3>Severity Distribution</h3>
+      <% 
+        const total = (highSeverityCount + mediumSeverityCount + lowSeverityCount) || 1;
+        const pHigh = (highSeverityCount / total) * 100;
+        const pMed = (mediumSeverityCount / total) * 100;
+        const pLow = (lowSeverityCount / total) * 100;
+      %>
+      <div class="severity-bar">
+        <span class="bar-high" style="width: <%= pHigh %>%"><%= highSeverityCount > 0 ? 'High' : '' %></span>
+        <span class="bar-medium" style="width: <%= pMed %>%"><%= mediumSeverityCount > 0 ? 'Med' : '' %></span>
+        <span class="bar-low" style="width: <%= pLow %>%"><%= lowSeverityCount > 0 ? 'Low' : '' %></span>
+      </div>
+      <div class="severity-labels">
+        <span><i class="legend-dot high"></i> High: <%= highSeverityCount %></span>
+        <span><i class="legend-dot medium"></i> Medium: <%= mediumSeverityCount %></span>
+        <span><i class="legend-dot low"></i> Low: <%= lowSeverityCount %></span>
+      </div>
+    </div>
+
+    <div class="panel-header">
+      <h2>Recent Alerts</h2>
+      <a href="/admin/alerts" class="small-link">View All</a>
+    </div>
+    
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Type</th>
+            <th>Location</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (latestAlerts && latestAlerts.length > 0) { %>
+            <% latestAlerts.forEach(alert => { %>
+              <tr>
+                <td><span class="badge <%= alert.severity.toLowerCase() %>"><%= alert.severity %></span></td>
+                <td><strong><%= alert.disasterType %></strong></td>
+                <td><%= alert.state %></td>
+                <td><%= new Date(alert.createdAt).toLocaleDateString() %></td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr><td colspan="4">No alerts found.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="side-panel">
+    <h3>Quick Actions</h3>
+    <div class="stacked-form">
+      <a href="/admin/new-alert" class="quick-action-card">
+        <span class="quick-action-icon">➕</span>
+        <div class="quick-action-text">
+          <h3>Issue Warning</h3>
+          <p>Create a new disaster alert</p>
+        </div>
+      </a>
+      <a href="/admin/sos" class="quick-action-card">
+        <span class="quick-action-icon">🚒</span>
+        <div class="quick-action-text">
+          <h3>Manage SOS</h3>
+          <p><%= newSosCount %> requests pending</p>
+        </div>
+      </a>
+      <a href="/admin/alerts" class="quick-action-card">
+        <span class="quick-action-icon">📂</span>
+        <div class="quick-action-text">
+          <h3>Archive</h3>
+          <p>Manage existing alerts</p>
+        </div>
+      </a>
+      <a href="/admin/resources" class="quick-action-card">
+        <span class="quick-action-icon">🏥</span>
+        <div class="quick-action-text">
+          <h3>Safe Zones</h3>
+          <p>Manage Shelters & Hospitals</p>
+        </div>
+      </a>
+    </div>
+
+    <div class="side-section">
+      <h3>Latest Activity</h3>
+      <div class="helpline-list">
+        <% if (latestSos && latestSos.length > 0) { %>
+            <div class="helpline-item">
+              <div>
+                <strong><%= sos.userName %></strong>
+                <p class="muted" style="margin:0; font-size: 0.8rem;"><%= sos.state %></p>
+              </div>
+              <span class="badge <%= sos.status === 'Resolved' ? 'low' : (sos.status === 'New' || sos.status === 'Pending' ? 'high' : 'medium') %>">
+                <%= sos.status %>
+              </span>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <p class="muted">No recent SOS activity.</p>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

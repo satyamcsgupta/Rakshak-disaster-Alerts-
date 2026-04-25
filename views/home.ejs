@@ -1,0 +1,90 @@
+<%- include('partials/header') %>
+
+<section class="hero">
+  <div class="hero-content">
+    <p class="eyebrow">Multilingual emergency communication</p>
+    <h1>Disaster alerts people can understand quickly.</h1>
+    <p class="hero-text">
+      Set up your emergency profile once with your location and language, then access warnings and help faster when it matters.
+    </p>
+    <div class="button-row">
+      <% if (currentUser) { %>
+        <a class="btn btn-primary" href="/alerts">Open User Dashboard</a>
+        <a class="btn btn-secondary" href="/admin">Open Admin Dashboard</a>
+      <% } else { %>
+        <a class="btn btn-primary" href="/auth/register">Create Account</a>
+        <a class="btn btn-secondary" href="/auth/login">Login</a>
+      <% } %>
+    </div>
+    <p class="translation-note">Choose your preferred language once, and alerts will appear in the language you understand. The platform can also auto-detect your browser language.</p>
+  </div>
+  <div class="hero-panel">
+    <p class="hero-panel-label">Platform Promise</p>
+    <h2>Clarity, urgency, and guidance in one place</h2>
+    <ul class="hero-points">
+      <li>Regional language alerts with voice playback</li>
+      <li>Action-first safety guidance for each warning</li>
+      <li>Map-based situational awareness and SOS access</li>
+    </ul>
+  </div>
+</section>
+
+<section class="feature-grid">
+  <% highlightFeatures.forEach((feature) => { %>
+    <article class="feature-card">
+      <h2><%= feature.title %></h2>
+      <p><%= feature.description %></p>
+    </article>
+  <% }) %>
+</section>
+
+<section class="content-panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Response Flow</p>
+      <h2>What the platform now helps users do</h2>
+    </div>
+  </div>
+  <div class="feature-grid">
+    <article class="feature-card">
+      <h2>Understand Faster</h2>
+      <p>Official-sounding alerts are shown in the user&apos;s language with short summaries and voice playback.</p>
+    </article>
+    <article class="feature-card">
+      <h2>Act Faster</h2>
+      <p>Each alert can now show what to do now, what to avoid, and a quick emergency kit checklist.</p>
+    </article>
+    <article class="feature-card">
+      <h2>Reach Help Faster</h2>
+      <p>Users can raise SOS requests, check affected areas, and keep helpline numbers close without leaving the app.</p>
+    </article>
+  </div>
+</section>
+
+<section class="content-panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Emergency Help</p>
+      <h2>Quick Helplines</h2>
+    </div>
+  </div>
+  <div class="feature-grid helpline-grid">
+    <article class="feature-card">
+      <h2>National Emergency</h2>
+      <p><strong>112</strong></p>
+      <p class="muted">Police, fire, and emergency response.</p>
+    </article>
+    <article class="feature-card">
+      <h2>Ambulance</h2>
+      <p><strong>108</strong></p>
+      <p class="muted">Emergency medical help in many Indian states.</p>
+    </article>
+    <article class="feature-card">
+      <h2>Disaster Helpline</h2>
+      <p><strong>1078</strong></p>
+      <p class="muted">Common emergency helpline used during disaster response.</p>
+    </article>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

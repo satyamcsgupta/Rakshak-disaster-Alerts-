@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+
+<section class="auth-layout">
+  <div class="auth-copy">
+    <p class="eyebrow">Welcome back</p>
+    <h1>Login to your emergency account.</h1>
+    <p class="muted">After login, your saved state, city, and language preference are applied automatically on the alerts dashboard.</p>
+  </div>
+
+  <form class="form-panel auth-form" action="/auth/login" method="POST">
+    <% if (error) { %>
+      <div class="error-box"><%= error %></div>
+    <% } %>
+
+    <label>
+      Email
+      <input type="email" name="email" required value="<%= email || '' %>">
+    </label>
+
+    <label>
+      Password
+      <input type="password" name="password" required>
+    </label>
+
+    <button class="btn btn-primary" type="submit">Login</button>
+    <p class="form-note">New user? <a class="small-link" href="/auth/register">Create an account</a>.</p>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,95 @@
+<%- include('../partials/header') %>
+
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">Admin side</p>
+    <h1><%= pageTitle %></h1>
+  </div>
+  <a class="btn btn-secondary" href="/admin/alerts">Back to Alerts</a>
+</section>
+
+<form class="form-panel" action="<%= formAction %>" method="POST">
+  <div class="form-grid">
+    <label>
+      Disaster Title
+      <input type="text" name="title" required value="<%= alert ? alert.title : '' %>">
+    </label>
+
+    <label>
+      Disaster Type
+      <input type="text" name="disasterType" required placeholder="Flood, Cyclone, Earthquake" value="<%= alert ? alert.disasterType : '' %>">
+    </label>
+
+    <label>
+      State / Location
+      <select name="state" required>
+        <% states.forEach((state) => { %>
+          <option value="<%= state %>" <%= alert && alert.state === state ? 'selected' : '' %>><%= state %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Severity
+      <select name="severity" required>
+        <% ['High', 'Medium', 'Low'].forEach((level) => { %>
+          <option value="<%= level %>" <%= alert && alert.severity === level ? 'selected' : '' %>><%= level %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Latitude
+      <input
+        type="number"
+        name="latitude"
+        step="any"
+        min="-90"
+        max="90"
+        placeholder="Example: 19.0760"
+        value="<%= alert && alert.latitude !== null && alert.latitude !== undefined ? alert.latitude : '' %>"
+      >
+    </label>
+
+    <label>
+      Longitude
+      <input
+        type="number"
+        name="longitude"
+        step="any"
+        min="-180"
+        max="180"
+        placeholder="Example: 72.8777"
+        value="<%= alert && alert.longitude !== null && alert.longitude !== undefined ? alert.longitude : '' %>"
+      >
+    </label>
+  </div>
+
+  <p class="muted">Add real coordinates to place this alert accurately on the map. If you leave them blank, the map will only show the state reference point.</p>
+
+  <section class="translation-panel">
+    <div>
+      <h2>Alert Messages</h2>
+      <p class="muted">English, Hindi, and Marathi are required. Other language messages are optional and will fall back to English if left blank.</p>
+    </div>
+
+    <% languages.forEach((language) => { %>
+      <label>
+        <%= language.name %> Message <%= ['English', 'Hindi', 'Marathi'].includes(language.name) ? '' : '(optional)' %>
+        <textarea
+          name="<%= language.field %>"
+          <%= ['English', 'Hindi', 'Marathi'].includes(language.name) ? 'required' : '' %>
+        ><%= alert ? alert[language.field] || '' : '' %></textarea>
+      </label>
+    <% }) %>
+  </section>
+
+  <label>
+    Precautions
+    <textarea name="precautions" required><%= alert ? alert.precautions : '' %></textarea>
+  </label>
+
+  <button class="btn btn-primary" type="submit"><%= buttonText %></button>
+</form>
+
+<%- include('../partials/footer') %>

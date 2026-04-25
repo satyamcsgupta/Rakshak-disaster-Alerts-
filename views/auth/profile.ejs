@@ -1,0 +1,70 @@
+<%- include('../partials/header') %>
+
+<section class="auth-layout">
+  <div class="auth-copy">
+    <p class="eyebrow">My Profile</p>
+    <h1>Update your emergency information.</h1>
+    <p class="muted">Keep your phone number, location, language, and emergency contacts current so alerts and SOS records stay useful.</p>
+  </div>
+
+  <form class="form-panel auth-form" action="/auth/profile" method="POST">
+    <% if (error) { %>
+      <div class="error-box"><%= error %></div>
+    <% } %>
+    <% if (success) { %>
+      <div class="success-box"><%= success %></div>
+    <% } %>
+
+    <label>
+      Full Name
+      <input type="text" name="name" required value="<%= formData.name || '' %>">
+    </label>
+
+    <label>
+      Email
+      <input type="email" name="email" required value="<%= formData.email || '' %>">
+    </label>
+
+    <label>
+      Phone Number
+      <input type="tel" name="phone" required value="<%= formData.phone || '' %>">
+    </label>
+
+    <label>
+      State
+      <select name="state" required>
+        <% states.forEach((state) => { %>
+          <option value="<%= state %>" <%= formData.state === state ? 'selected' : '' %>><%= state %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      City / District
+      <input type="text" name="city" required value="<%= formData.city || '' %>">
+    </label>
+
+    <label>
+      Preferred Language
+      <select name="language" required>
+        <% languages.forEach((language) => { %>
+          <option value="<%= language %>" <%= formData.language === language ? 'selected' : '' %>><%= language %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Emergency Contact Name
+      <input type="text" name="emergencyContactName" value="<%= formData.emergencyContactName || '' %>">
+    </label>
+
+    <label>
+      Emergency Contact Phone
+      <input type="tel" name="emergencyContactPhone" value="<%= formData.emergencyContactPhone || '' %>">
+    </label>
+
+    <button class="btn btn-primary" type="submit">Save Profile</button>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

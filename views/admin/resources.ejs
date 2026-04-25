@@ -1,0 +1,59 @@
+<%- include('../partials/header') %>
+
+<div class="panel-header">
+  <div class="page-heading">
+    <p class="eyebrow">Safe Zones</p>
+    <h1>Emergency Resources</h1>
+  </div>
+  <div class="button-row">
+    <a href="/admin/resources/new" class="btn btn-primary">Add New Resource</a>
+  </div>
+</div>
+
+<section class="content-panel">
+  <% if (resources.length === 0) { %>
+    <div class="empty-state">
+      <p>No resources added yet. Add shelters, hospitals, or supply points.</p>
+    </div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Name</th>
+            <th>State</th>
+            <th>Location (Lat, Lng)</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% resources.forEach((res) => { %>
+            <tr>
+              <td><span class="badge low"><%= res.type %></span></td>
+              <td><strong><%= res.name %></strong></td>
+              <td><%= res.state %></td>
+              <td><%= res.latitude %>, <%= res.longitude %></td>
+              <td>
+                <span class="badge <%= res.isActive ? 'low' : 'medium' %>">
+                  <%= res.isActive ? 'Active' : 'Inactive' %>
+                </span>
+              </td>
+              <td>
+                <div class="actions">
+                  <a href="/admin/resources/<%= res._id %>/edit" class="btn btn-secondary btn-small">Edit</a>
+                  <form action="/admin/resources/<%= res._id %>/delete" method="POST" onsubmit="return confirm('Delete this resource?')">
+                    <button class="btn btn-danger btn-small" type="submit">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,267 @@
+<%- include('../partials/header') %>
+
+<!-- Weather Widget -->
+<% if (weather) { %>
+<section class="weather-widget animate-in">
+  <div class="weather-icon"><%= weather.icon %></div>
+  <div class="weather-info">
+    <div class="weather-location"><%= selectedState %>, India</div>
+    <div class="weather-temp"><%= weather.temp %>°C</div>
+    <div class="weather-desc"><%= weather.desc %> · <%= weather.windSpeed %></div>
+  </div>
+  <div class="weather-status">
+    <span class="badge <%= weather.status === 'Normal' ? 'low' : (weather.status === 'Extreme Heat' ? 'high' : 'medium') %>">
+      <%= weather.status %>
+    </span>
+  </div>
+</section>
+<% } %>
+
+<!-- Auto Refresh Bar -->
+<section class="auto-refresh-bar animate-in">
+  <div>
+    <span class="refresh-dot"></span>
+    <span id="refreshStatus">Live updates active</span>
+  </div>
+  <button class="refresh-toggle" id="refreshToggle">Pause Refresh</button>
+</section>
+
+<div id="alertContent" class="animate-in">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">User side</p>
+      <h1>Disaster Alerts</h1>
+      <% if (selectedLanguage !== 'English') { %>
+        <p class="translation-note">Alerts are shown in <strong><%= selectedLanguage %></strong> to help more people understand the threat quickly.</p>
+      <% } %>
+    </div>
+  </section>
+
+  <% if (popupAlert) { %>
+    <section
+      id="instantAlertModal"
+      class="instant-alert-backdrop"
+      data-alert-id="<%= popupAlert._id %>"
+    >
+      <div class="instant-alert-modal">
+        <div class="card-topline">
+          <span class="badge <%= popupAlert.severity.toLowerCase() %>"><%= popupAlert.severity %></span>
+          <button class="instant-alert-close" type="button" id="closeInstantAlert" aria-label="Close alert">Close</button>
+        </div>
+        <p class="eyebrow">Instant Alert</p>
+        <h2><%= popupAlert.title %></h2>
+        <p class="muted"><%= popupAlert.disasterType %> in <%= popupAlert.state %></p>
+        <p><%= popupAlert.localizedMessage %></p>
+        <div class="card-actions">
+          <button
+            class="voice-btn"
+            type="button"
+            data-language="<%= selectedLanguage %>"
+            data-speak="<%= `${popupAlert.title}. ${popupAlert.localizedMessage}. Precautions. ${popupAlert.precautions}` %>"
+          >
+            Listen
+          </button>
+          <a class="btn btn-primary" href="/alerts/<%= popupAlert._id %>?language=<%= selectedLanguage %>">View Full Alert</a>
+        </div>
+      </div>
+    </section>
+  <% } %>
+
+  <section class="filter-panel">
+    <form action="/alerts" method="GET" class="filter-form" id="filterForm">
+      <label>
+        Select State
+        <select name="state" id="stateSelect">
+          <% states.forEach((state) => { %>
+            <option value="<%= state %>" <%= selectedState === state ? 'selected' : '' %>><%= state %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Select Language
+        <select name="language" id="languageSelect">
+          <% languages.forEach((language) => { %>
+            <option value="<%= language %>" <%= selectedLanguage === language ? 'selected' : '' %>><%= language %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <button class="btn btn-primary" type="submit">Show Alerts</button>
+    </form>
+    <button class="btn btn-secondary location-btn" type="button" id="useLocationBtn">Use My Location</button>
+  </section>
+
+  <p class="translation-note" style="margin: 0 0 24px;">If you have not selected a language, we use your browser preferences to choose the best supported regional language automatically.</p>
+
+  <section class="stats-grid quick-stats">
+    <% summaryCards.forEach((item) => { %>
+      <article class="stat-card">
+        <span><%= item.label %></span>
+        <strong><%= item.value %></strong>
+      </article>
+    <% }) %>
+  </section>
+
+  <section class="sos-panel">
+    <div>
+      <h2>Need emergency help?</h2>
+      <p>Press SOS to save your distress request for <strong><%= selectedState %></strong>.</p>
+    </div>
+    <form action="/sos" method="POST" id="sosForm" class="sos-form">
+      <input type="hidden" name="state" value="<%= selectedState %>">
+      <input type="hidden" name="latitude" id="latitude">
+      <input type="hidden" name="longitude" id="longitude">
+      <input type="text" name="userName" placeholder="Your name (optional)">
+      <button class="btn btn-danger" type="submit">I am in trouble</button>
+    </form>
+  </section>
+
+  <section class="content-panel map-panel">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Map view</p>
+        <h2><%= selectedState %> Alert Area</h2>
+      </div>
+      <div class="map-header-actions">
+        <span class="map-count-pill"><%= (alertMapData || []).length %> mapped alerts</span>
+        <button class="btn btn-secondary btn-small" type="button" id="locateOnMapBtn">Show My Position</button>
+        <button class="btn btn-secondary btn-small" type="button" id="resetMapBtn">Reset View</button>
+        <button class="btn btn-secondary btn-small" type="button" id="expandMapBtn">Expand Map</button>
+      </div>
+    </div>
+    <div class="map-shell">
+      <div class="map-frame">
+        <div
+          id="alertMap"
+          class="map-canvas"
+          data-center='<%- JSON.stringify(selectedStateCoordinates || null) %>'
+          data-markers='<%- JSON.stringify(alertMapData || []) %>'
+          data-resources='<%- JSON.stringify(resourceMapData || []) %>'
+          data-state="<%= selectedState %>"
+        ></div>
+        <button class="map-activate-overlay" type="button" id="mapActivateOverlay">
+          Click to interact with the map
+        </button>
+        <% if ((alertMapData || []).length === 0) { %>
+          <div class="map-empty-state">
+            <strong>No exact alert locations yet</strong>
+            <span>The map is centered on <%= selectedState %>. Add latitude and longitude while creating alerts to show precise pins.</span>
+          </div>
+        <% } %>
+      </div>
+      <aside class="map-sidebar">
+        <div class="map-legend">
+          <h3>Severity Legend</h3>
+          <div class="legend-list">
+            <span><i class="legend-dot high"></i>High risk</span>
+            <span><i class="legend-dot medium"></i>Medium risk</span>
+            <span><i class="legend-dot low"></i>Low risk</span>
+            <span><i class="legend-dot center"></i>State reference</span>
+            <span><i class="legend-dot user"></i>Your position</span>
+          </div>
+        </div>
+        <div class="map-insight-card">
+          <h3>Mapped Coverage</h3>
+          <p><strong><%= (alertMapData || []).length %></strong> of <strong><%= alerts.length %></strong> local alerts have exact coordinates for <%= selectedState %>.</p>
+        </div>
+        <div class="map-insight-card">
+          <h3>Map Insight</h3>
+          <p>Markers show only alerts with saved real coordinates inside <strong><%= selectedState %></strong>. Open any card below to review the full guidance and emergency steps.</p>
+        </div>
+        <div class="map-insight-card">
+          <h3>Quick Tip</h3>
+          <p>Use the location button above to switch to the nearest supported state and see alerts relevant to your current area. You can also switch between street, satellite, and terrain layers from the map control.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="content-panel official-panel">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Official source</p>
+        <h2>SACHET / NDMA Alerts for <%= selectedState %></h2>
+      </div>
+      <a class="small-link" href="<%= officialFeedUrl %>" target="_blank" rel="noopener">Open official feed</a>
+    </div>
+
+    <% if (officialAlerts.length === 0) { %>
+      <p class="muted">No live official alerts found for this state right now, or the official feed could not be reached. Admin alerts below are still available for demo.</p>
+    <% } else { %>
+      <div class="official-list">
+        <% officialAlerts.forEach((officialAlert) => { %>
+          <article class="official-alert">
+            <div class="card-topline">
+              <span class="badge official">Official</span>
+              <span><%= officialAlert.source %></span>
+            </div>
+            <h3><%= officialAlert.title %></h3>
+            <p class="official-summary"><%= officialAlert.guidance.summary %></p>
+            <% if (officialAlert.description) { %>
+              <p><%= officialAlert.description %></p>
+            <% } %>
+            <div class="guidance-strip">
+              <% officialAlert.guidance.immediateActions.slice(0, 2).forEach((step) => { %>
+                <span><%= step %></span>
+              <% }) %>
+            </div>
+            <div class="share-actions">
+              <button class="share-btn whatsapp" data-title="<%= officialAlert.title %>" data-url="<%= officialAlert.link || '' %>">WhatsApp Share</button>
+              <button class="share-btn copy" data-text="<%= officialAlert.title %> - <%= officialAlert.guidance.summary %>">Copy Text</button>
+            </div>
+            <button
+              class="voice-btn"
+              type="button"
+              style="margin-top: 14px;"
+              data-language="<%= selectedLanguage %>"
+              data-speak="<%= `${officialAlert.title}. ${officialAlert.description || ''}` %>"
+            >
+              Listen
+            </button>
+          </article>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+
+  <section class="alert-grid">
+    <% if (alerts.length === 0) { %>
+      <div class="empty-state">
+        <h2>No alerts for <%= selectedState %></h2>
+        <p>Try another state or ask the admin to add sample alerts.</p>
+      </div>
+    <% } else { %>
+      <% alerts.forEach((alert) => { %>
+        <article class="alert-card">
+          <div class="card-topline">
+            <span class="badge <%= alert.severity.toLowerCase() %>"><%= alert.severity %></span>
+            <span><%= alert.state %></span>
+          </div>
+          <h2><%= alert.title %></h2>
+          <p class="muted"><%= alert.disasterType %></p>
+          <p class="alert-summary"><%= alert.guidance.summary %></p>
+          <div class="share-actions">
+            <button class="share-btn whatsapp" data-title="<%= alert.title %>" data-url="/alerts/<%= alert._id %>">WhatsApp</button>
+            <button class="share-btn copy" data-text="<%= alert.title %>: <%= alert.guidance.summary %>">Copy</button>
+          </div>
+          <div class="card-actions">
+            <button
+              class="voice-btn"
+              type="button"
+              data-language="<%= selectedLanguage %>"
+              data-speak="<%= `${alert.title}. ${alert.localizedMessage}. Precautions. ${alert.precautions}` %>"
+            >
+              Listen
+            </button>
+            <a class="btn btn-secondary" href="/alerts/<%= alert._id %>?language=<%= selectedLanguage %>">Read Details</a>
+          </div>
+        </article>
+      <% }) %>
+    <% } %>
+  </section>
+</div>
+
+<div class="ajax-spinner"></div>
+
+<%- include('../partials/footer') %>

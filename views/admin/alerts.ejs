@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">Admin side</p>
+    <h1>Manage Alerts</h1>
+  </div>
+  <a class="btn btn-primary" href="/admin/alerts/new">Add Alert</a>
+</section>
+
+<section class="content-panel">
+  <% if (alerts.length === 0) { %>
+    <p class="muted">No alerts found. Create your first alert.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>State</th>
+            <th>Severity</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% alerts.forEach((alert) => { %>
+            <tr>
+              <td><%= alert.title %></td>
+              <td><%= alert.disasterType %></td>
+              <td><%= alert.state %></td>
+              <td><span class="badge <%= alert.severity.toLowerCase() %>"><%= alert.severity %></span></td>
+              <td class="actions">
+                <a class="small-link" href="/admin/alerts/<%= alert._id %>/edit">Edit</a>
+                <form action="/admin/alerts/<%= alert._id %>/delete" method="POST">
+                  <button class="danger-link" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

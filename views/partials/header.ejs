@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Multilingual disaster alert platform – receive warnings in 11 Indian languages with voice playback, safety guidance, and SOS.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="/manifest.json">
+  <title><%= pageTitle %></title>
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  >
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="brand-icon">🛡️</span> Suraksha Alert
+    </a>
+    <nav class="nav-links">
+      <button class="contrast-toggle" type="button" id="contrastToggle">Accessibility Mode</button>
+      <button class="dark-toggle" type="button" id="darkModeToggle">🌙 Dark Mode</button>
+      <% if (currentUser) { %>
+        <a href="/alerts">User Alerts</a>
+        <a href="/preparedness">Preparedness Guide</a>
+        <a href="/auth/profile">Profile</a>
+        <% if (currentUser.role === 'admin') { %>
+          <a href="/admin">Admin</a>
+          <a href="/admin/sos">SOS Requests</a>
+        <% } %>
+        <% if (currentUser.role === 'volunteer' || currentUser.role === 'admin') { %>
+          <a href="/volunteer">Volunteer Hub</a>
+        <% } %>
+        <span class="nav-user"><%= currentUser.name %></span>
+        <form class="logout-form" action="/auth/logout" method="POST">
+          <button type="submit">Logout</button>
+        </form>
+      <% } else { %>
+        <a href="/auth/login">Login</a>
+        <a href="/auth/register">Register</a>
+      <% } %>
+    </nav>
+  </header>
+  <main class="page animate-in">

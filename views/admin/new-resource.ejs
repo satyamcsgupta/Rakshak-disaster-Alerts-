@@ -1,0 +1,80 @@
+<%- include('../partials/header') %>
+
+<div class="page-heading">
+  <p class="eyebrow">Form</p>
+  <h1><%= resource ? 'Edit' : 'Add' %> Safe Zone</h1>
+</div>
+
+<section class="form-panel">
+  <form action="<%= resource ? '/admin/resources/' + resource._id : '/admin/resources' %>" method="POST" class="stacked-form">
+    <div class="form-grid">
+      <label>
+        Resource Name
+        <input type="text" name="name" required value="<%= resource ? resource.name : '' %>" placeholder="e.g. Community Shelter A">
+      </label>
+
+      <label>
+        Resource Type
+        <select name="type" required>
+          <option value="Shelter" <%= resource && resource.type === 'Shelter' ? 'selected' : '' %>>Shelter</option>
+          <option value="Hospital" <%= resource && resource.type === 'Hospital' ? 'selected' : '' %>>Hospital</option>
+          <option value="Water" <%= resource && resource.type === 'Water' ? 'selected' : '' %>>Water Point</option>
+          <option value="Food" <%= resource && resource.type === 'Food' ? 'selected' : '' %>>Food Distribution</option>
+          <option value="Medical Support" <%= resource && resource.type === 'Medical Support' ? 'selected' : '' %>>Medical Support</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        State
+        <select name="state" required>
+          <% states.forEach((state) => { %>
+            <option value="<%= state %>" <%= resource && resource.state === state ? 'selected' : '' %>><%= state %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        Address (Optional)
+        <input type="text" name="address" value="<%= resource ? resource.address : '' %>" placeholder="Full address">
+      </label>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Latitude
+        <input type="number" step="any" name="latitude" required value="<%= resource ? resource.latitude : '' %>" placeholder="e.g. 19.0760">
+      </label>
+
+      <label>
+        Longitude
+        <input type="number" step="any" name="longitude" required value="<%= resource ? resource.longitude : '' %>" placeholder="e.g. 72.8777">
+      </label>
+    </div>
+
+    <div class="form-grid">
+      <label>
+        Capacity (e.g. '500 people')
+        <input type="text" name="capacity" value="<%= resource ? resource.capacity : '' %>">
+      </label>
+
+      <label>
+        Contact Phone
+        <input type="tel" name="contactPhone" value="<%= resource ? resource.contactPhone : '' %>">
+      </label>
+    </div>
+
+    <label>
+      <input type="checkbox" name="isActive" value="true" <%= !resource || resource.isActive ? 'checked' : '' %> style="width: auto;">
+      Active and Operational
+    </label>
+
+    <div class="button-row">
+      <button class="btn btn-primary" type="submit"><%= resource ? 'Update' : 'Create' %> Resource</button>
+      <a href="/admin/resources" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

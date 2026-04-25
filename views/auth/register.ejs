@@ -1,0 +1,87 @@
+<%- include('../partials/header') %>
+
+<section class="auth-layout">
+  <div class="auth-copy">
+    <p class="eyebrow">Create account</p>
+    <h1>Create your emergency profile.</h1>
+    <p class="muted">Choose your language during registration and save the personal details most emergency apps ask for up front.</p>
+  </div>
+
+  <form class="form-panel auth-form" action="/auth/register" method="POST">
+    <% if (error) { %>
+      <div class="error-box"><%= error %></div>
+    <% } %>
+
+    <label>
+      Full Name
+      <input type="text" name="name" required value="<%= formData.name || '' %>">
+    </label>
+
+    <label>
+      Email
+      <input type="email" name="email" required value="<%= formData.email || '' %>">
+    </label>
+
+    <label>
+      Phone Number
+      <input type="tel" name="phone" required value="<%= formData.phone || '' %>" placeholder="10-digit mobile number">
+    </label>
+
+    <label>
+      State Where You Live
+      <select name="state" required>
+        <% states.forEach((state) => { %>
+          <option value="<%= state %>" <%= formData.state === state ? 'selected' : '' %>><%= state %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      City / District
+      <input type="text" name="city" required value="<%= formData.city || '' %>" placeholder="Mumbai, Pune, Jaipur">
+    </label>
+
+    <label>
+      Preferred Language
+      <select name="language" required>
+        <% languages.forEach((language) => { %>
+          <option value="<%= language %>" <%= formData.language === language ? 'selected' : '' %>><%= language %></option>
+        <% }) %>
+      </select>
+    </label>
+    <p class="muted">Your preferred language will be used for all alert messages and voice playback.</p>
+
+    <label>
+      Register As
+      <select name="role" required>
+        <option value="user" <%= formData.role === 'user' ? 'selected' : '' %>>Regular User (Receive Alerts)</option>
+        <option value="volunteer" <%= formData.role === 'volunteer' ? 'selected' : '' %>>Volunteer (Respond to SOS)</option>
+      </select>
+    </label>
+
+    <label>
+      Password
+      <input type="password" name="password" required minlength="6">
+    </label>
+
+    <label>
+      Confirm Password
+      <input type="password" name="confirmPassword" required minlength="6">
+    </label>
+
+    <label>
+      Emergency Contact Name
+      <input type="text" name="emergencyContactName" value="<%= formData.emergencyContactName || '' %>" placeholder="Parent, sibling, friend">
+    </label>
+
+    <label>
+      Emergency Contact Phone
+      <input type="tel" name="emergencyContactPhone" value="<%= formData.emergencyContactPhone || '' %>" placeholder="Optional emergency number">
+    </label>
+
+    <button class="btn btn-primary" type="submit">Create Account</button>
+    <p class="form-note">Already registered? <a class="small-link" href="/auth/login">Login here</a>.</p>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>
