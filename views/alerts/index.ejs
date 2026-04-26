@@ -8,6 +8,9 @@
     <div class="weather-location"><%= selectedState %>, India</div>
     <div class="weather-temp"><%= weather.temp %>°C</div>
     <div class="weather-desc"><%= weather.desc %> · <%= weather.windSpeed %></div>
+    <% if (weather.updatedAt) { %>
+      <div class="weather-desc">Updated <%= new Date(weather.updatedAt).toLocaleString() %></div>
+    <% } %>
   </div>
   <div class="weather-status">
     <span class="badge <%= weather.status === 'Normal' ? 'low' : (weather.status === 'Extreme Heat' ? 'high' : 'medium') %>">
