@@ -4,6 +4,7 @@ let currentVoiceButton = null;
 let playbackCancelled = false;
 let autoRefreshInterval = null;
 let isAutoRefreshPaused = true;
+let sosLocationWatchId = null;
 
 /* ── UI Elements ── */
 const darkModeToggle = document.getElementById('darkModeToggle');
@@ -68,6 +69,12 @@ const getLastKnownLocation = () => {
     return null;
   }
 };
+
+const isUsableGpsLocation = (location, maxAgeMs = LOCATION_MAX_AGE_MS) => (
+  !!location
+  && location.source === 'gps'
+  && Date.now() - location.capturedAt <= maxAgeMs
+);
 
 const getGpsErrorMessage = (error) => {
   if (!error) return 'GPS location is not available right now.';
@@ -134,6 +141,42 @@ const requestAndCacheUserLocation = async ({ showStatus = false, timeoutMs = 300
     showToast(`Location ready within about ${Math.round(location.accuracy || 0)} meters.`, 'success');
   }
   return location;
+};
+
+const startSosLocationWatch = () => {
+  if (!navigator.geolocation || !canUsePreciseLocation()) {
+    updateSosLocationStatus('Exact GPS needs HTTPS and a browser with location support.', 'warning');
+    return false;
+  }
+
+  if (sosLocationWatchId !== null) {
+    return true;
+  }
+
+  updateSosLocationStatus('Starting GPS. Keep phone Location ON...', 'info');
+  sosLocationWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const location = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        source: 'gps',
+        capturedAt: Date.now()
+      };
+      saveLastKnownLocation(location, 'gps');
+      updateSosLocationStatus(`GPS ready, accuracy about ${Math.round(location.accuracy || 0)}m.`, 'success');
+    },
+    (error) => {
+      updateSosLocationStatus(getGpsErrorMessage(error), 'error');
+      if (sosLocationWatchId !== null) {
+        navigator.geolocation.clearWatch(sosLocationWatchId);
+        sosLocationWatchId = null;
+      }
+    },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
+  );
+
+  return true;
 };
 
 const getLocationPermissionState = async () => {
@@ -407,6 +450,14 @@ const setSosLocationFields = (form, { latitude, longitude, accuracy = '', source
   if (sourceInput) sourceInput.value = source;
 };
 
+const setSosLocationFromCache = (form) => {
+  const cachedLocation = getLastKnownLocation();
+  if (!isUsableGpsLocation(cachedLocation)) return false;
+  setSosLocationFields(form, cachedLocation);
+  updateSosLocationStatus(`Using ready GPS, accuracy about ${Math.round(cachedLocation.accuracy || 0)}m.`, 'success');
+  return true;
+};
+
 const setupAlertMap = (mapEl) => {
   const center = JSON.parse(mapEl.dataset.center || 'null');
   const markers = JSON.parse(mapEl.dataset.markers || '[]');
@@ -665,6 +716,7 @@ const init = () => {
 
   const sosForm = document.getElementById('sosForm');
   if (sosForm) {
+    const enableSosLocationBtn = document.getElementById('enableSosLocationBtn');
     getLocationPermissionState().then((state) => {
       if (!canUsePreciseLocation()) {
         updateSosLocationStatus('Exact GPS needs HTTPS. Use the Render HTTPS URL.', 'warning');
@@ -674,6 +726,12 @@ const init = () => {
         updateSosLocationStatus('GPS permission will be requested for exact SOS location.', 'info');
       }
     });
+
+    if (enableSosLocationBtn) {
+      enableSosLocationBtn.addEventListener('click', () => {
+        startSosLocationWatch();
+      });
+    }
 
     sosForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -723,6 +781,12 @@ const init = () => {
           return;
         }
 
+        if (setSosLocationFromCache(sosForm)) {
+          sosForm.submit();
+          return;
+        }
+
+        startSosLocationWatch();
         if (btn) btn.textContent = 'Getting location...';
         updateSosLocationStatus('Getting exact GPS location. Keep this page open for up to 30 seconds...', 'info');
         const freshLocation = await requestAndCacheUserLocation({ showStatus: true, timeoutMs: 30000 });

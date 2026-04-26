@@ -1,8 +1,8 @@
-const CACHE_NAME = 'rakshak-v6';
+const CACHE_NAME = 'rakshak-v7';
 const ASSETS_TO_CACHE = [
   '/',
   '/css/style.css?v=3',
-  '/js/main.js?v=6',
+  '/js/main.js?v=7',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'

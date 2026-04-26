@@ -564,7 +564,7 @@ textarea {
 
 .sos-form {
   display: grid;
-  grid-template-columns: minmax(180px, 260px) auto;
+  grid-template-columns: minmax(180px, 260px) auto auto;
   gap: 14px;
 }
 
