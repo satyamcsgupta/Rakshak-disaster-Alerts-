@@ -3,7 +3,7 @@ let currentAudio = null;
 let currentVoiceButton = null;
 let playbackCancelled = false;
 let autoRefreshInterval = null;
-let isAutoRefreshPaused = false;
+let isAutoRefreshPaused = true;
 
 /* ── UI Elements ── */
 const darkModeToggle = document.getElementById('darkModeToggle');
@@ -756,8 +756,9 @@ const init = () => {
 
   requestAndCacheUserLocation({ showStatus: false });
 
-  // Auto Refresh logic
+  // Auto refresh is opt-in so forms, GPS prompts, and mobile maps do not refresh unexpectedly.
   const startAutoRefresh = () => {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
     autoRefreshInterval = setInterval(() => {
       if (!isAutoRefreshPaused) handleFilterSubmit();
     }, 60000); // 1 minute
@@ -767,7 +768,7 @@ const init = () => {
   if (refreshBtn) {
     refreshBtn.onclick = () => {
       isAutoRefreshPaused = !isAutoRefreshPaused;
-      refreshBtn.textContent = isAutoRefreshPaused ? 'Resume Refresh' : 'Pause Refresh';
+      refreshBtn.textContent = isAutoRefreshPaused ? 'Enable Auto Refresh' : 'Pause Refresh';
       const statusText = document.getElementById('refreshStatus');
       if (statusText) statusText.textContent = isAutoRefreshPaused ? 'Updates paused' : 'Live updates active';
     };
