@@ -118,6 +118,7 @@
       <input type="hidden" name="locationAccuracy" id="locationAccuracy">
       <input type="hidden" name="locationSource" id="locationSource" value="unavailable">
       <input type="text" name="userName" placeholder="Your name (optional)">
+      <input type="text" name="city" placeholder="City / area if GPS fails (optional)" value="<%= selectedCity || currentUser?.city || '' %>">
       <button class="btn btn-secondary" type="button" id="enableSosLocationBtn">Enable Exact Location</button>
       <button class="btn btn-danger" type="submit">I am in trouble</button>
       <p class="sos-location-status" id="sosLocationStatus">Checking GPS permission...</p>

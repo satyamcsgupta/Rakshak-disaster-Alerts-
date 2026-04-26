@@ -256,6 +256,7 @@ exports.userAlertList = async (req, res) => {
     states,
     languages: languageNames,
     selectedState,
+    selectedCity,
     selectedLanguage,
     officialAlerts,
     weather,

@@ -43,7 +43,7 @@ exports.createSOS = async (req, res) => {
     ? locationSource
     : 'unavailable';
 
-  await SOS.create({
+  const sos = await SOS.create({
     user: userId,
     userName: userName || req.session.user?.name || 'Anonymous',
     contactNumber: contactNumber || req.session.user?.phone || '',
@@ -56,6 +56,10 @@ exports.createSOS = async (req, res) => {
     locationSource: hasCoordinates ? safeLocationSource : 'unavailable',
     locationCapturedAt: hasCoordinates ? new Date() : null
   });
+
+  console.log('Captured Latitude:', sos.latitude ?? '');
+  console.log('Captured Longitude:', sos.longitude ?? '');
+  console.log('Saved Successfully');
 
   res.render('sos-success', {
     pageTitle: 'SOS Sent',

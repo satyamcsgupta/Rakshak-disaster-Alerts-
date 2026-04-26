@@ -458,6 +458,40 @@ const setSosLocationFromCache = (form) => {
   return true;
 };
 
+const captureCurrentSosLocation = (form) => new Promise((resolve, reject) => {
+  if (!navigator.geolocation || !canUsePreciseLocation()) {
+    reject(new Error('Location is not available in this browser or context.'));
+    return;
+  }
+
+  updateSosLocationStatus('Fetching your location...', 'info');
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const location = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        source: 'gps'
+      };
+
+      console.log('Captured Latitude:', location.latitude);
+      console.log('Captured Longitude:', location.longitude);
+      saveLastKnownLocation(location, 'gps');
+      setSosLocationFields(form, location);
+      updateSosLocationStatus(`Location captured successfully. Accuracy about ${Math.round(location.accuracy || 0)}m.`, 'success');
+      resolve(location);
+    },
+    (error) => {
+      reject(error);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+});
+
 const setupAlertMap = (mapEl) => {
   const center = JSON.parse(mapEl.dataset.center || 'null');
   const markers = JSON.parse(mapEl.dataset.markers || '[]');
@@ -728,8 +762,17 @@ const init = () => {
     });
 
     if (enableSosLocationBtn) {
-      enableSosLocationBtn.addEventListener('click', () => {
-        startSosLocationWatch();
+      enableSosLocationBtn.addEventListener('click', async () => {
+        enableSosLocationBtn.disabled = true;
+        enableSosLocationBtn.textContent = 'Fetching location...';
+        try {
+          await captureCurrentSosLocation(sosForm);
+        } catch (error) {
+          updateSosLocationStatus(getGpsErrorMessage(error), 'error');
+        } finally {
+          enableSosLocationBtn.disabled = false;
+          enableSosLocationBtn.textContent = 'Retry Exact Location';
+        }
       });
     }
 
@@ -745,6 +788,8 @@ const init = () => {
         setSosLocationFields(sosForm, { source: 'unavailable' });
         updateSosLocationStatus('SOS will be sent without exact GPS location.', 'warning');
         alert(message);
+        console.log('Captured Latitude:', '');
+        console.log('Captured Longitude:', '');
         sosForm.submit();
       };
 
@@ -777,41 +822,43 @@ const init = () => {
       if (navigator.geolocation) {
         const permissionState = await getLocationPermissionState();
         if (permissionState === 'denied') {
-          await requestPermissionAndRetry('Location permission is blocked for this website. Please enable location permission from browser/site settings.');
-          return;
-        }
-
-        if (setSosLocationFromCache(sosForm)) {
-          sosForm.submit();
-          return;
-        }
-
-        startSosLocationWatch();
-        if (btn) btn.textContent = 'Getting location...';
-        updateSosLocationStatus('Getting exact GPS location. Keep this page open for up to 30 seconds...', 'info');
-        const freshLocation = await requestAndCacheUserLocation({ showStatus: true, timeoutMs: 30000 });
-
-        if (freshLocation) {
-          setSosLocationFields(sosForm, freshLocation);
-          sosForm.submit();
-          return;
-        }
-
-        const cachedLocation = getLastKnownLocation();
-        if (cachedLocation) {
-          setSosLocationFields(sosForm, cachedLocation);
-          const useCached = confirm('Exact live GPS is not available right now. Use your recent GPS location for SOS? Press Cancel to retry location permission.');
-          if (useCached) {
-            updateSosLocationStatus(`Using recent GPS, accuracy about ${Math.round(cachedLocation.accuracy || 0)}m.`, 'warning');
-            showToast('Using your recent GPS location for SOS.', 'info');
-            sosForm.submit();
-          } else {
-            requestPermissionAndRetry('Please allow location permission and keep phone GPS on for exact SOS location.');
+          alert('Location permission denied. Please allow location access.');
+          updateSosLocationStatus('Location permission denied. Please allow location access.', 'error');
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'I am in trouble';
           }
           return;
         }
 
-        requestPermissionAndRetry('Exact GPS location was not available. Please allow location permission and keep phone GPS on for exact SOS location.');
+        try {
+          await captureCurrentSosLocation(sosForm);
+          console.log('Saved Successfully');
+          sosForm.submit();
+          return;
+        } catch (error) {
+          console.warn('SOS GPS failed:', error);
+          if (error.code === 1) {
+            alert('Location permission denied. Please allow location access.');
+            updateSosLocationStatus('Location permission denied. Please allow location access.', 'error');
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'I am in trouble';
+            }
+            return;
+          }
+
+          const useApproximate = confirm(`${getGpsErrorMessage(error)}\n\nPress OK to send SOS with selected state/city only, or Cancel to retry GPS.`);
+          if (useApproximate) {
+            submitWithoutExactLocation('SOS will be sent with approximate state/city location.');
+          } else {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'I am in trouble';
+            }
+            updateSosLocationStatus('Tap SOS again to retry exact GPS.', 'warning');
+          }
+        }
       } else {
         submitWithoutExactLocation('This browser does not support GPS location. SOS will be sent without exact location.');
       }

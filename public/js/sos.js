@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const mapLink = req.latitude && req.longitude && !req.usedFallback
-        ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${req.latitude},${req.longitude}" target="_blank" class="btn btn-secondary btn-small w-full" style="grid-column: 1 / -1;">🗺️ Google Maps Directions</a>`
+        ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${req.latitude},${req.longitude}" target="_blank" class="btn btn-secondary btn-small w-full route-btn" style="grid-column: 1 / -1;">Get Route</a>`
         : '';
         
       let distanceHtml = '';
@@ -161,37 +161,46 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.view-map-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const id = e.target.dataset.id;
-        const marker = markerRefs[id];
-        const reqData = currentRequests.find(r => r._id === id);
-        
-        if (marker && reqData && reqData.latitude && reqData.longitude) {
-          markersLayer.zoomToShowLayer(marker, () => {
-            marker.openPopup();
-          });
-          
-          if (activeRouteLayer) {
-            map.removeLayer(activeRouteLayer);
-            activeRouteLayer = null;
-          }
-          
-          if (userLocation && !reqData.usedFallback) {
-            activeRouteLayer = L.polyline([
-              [userLocation.lat, userLocation.lng],
-              [reqData.latitude, reqData.longitude]
-            ], {
-              color: '#ef4444', weight: 4, dashArray: '10, 10', opacity: 0.8
-            }).addTo(map);
-            
-            const routeBounds = L.latLngBounds([userLocation.lat, userLocation.lng], [reqData.latitude, reqData.longitude]);
-            map.fitBounds(routeBounds, { padding: [40, 40] });
-          }
-
-          window.scrollTo({ top: document.querySelector('.sos-map-section').offsetTop, behavior: 'smooth' });
-        } else {
-          alert('Precise location not provided for this request.');
-        }
+        focusRequestOnMap(id);
       });
     });
+
+    document.querySelectorAll('.sos-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('button, a')) return;
+        focusRequestOnMap(card.dataset.id);
+      });
+    });
+  }
+
+  function focusRequestOnMap(id) {
+    const marker = markerRefs[id];
+    const reqData = currentRequests.find(r => r._id === id);
+
+    if (marker && reqData && reqData.latitude && reqData.longitude) {
+      markersLayer.zoomToShowLayer(marker, () => {
+        map.setView([reqData.latitude, reqData.longitude], reqData.usedFallback ? 8 : 15);
+        marker.openPopup();
+      });
+
+      if (activeRouteLayer) {
+        map.removeLayer(activeRouteLayer);
+        activeRouteLayer = null;
+      }
+
+      if (userLocation && !reqData.usedFallback) {
+        activeRouteLayer = L.polyline([
+          [userLocation.lat, userLocation.lng],
+          [reqData.latitude, reqData.longitude]
+        ], {
+          color: '#ef4444', weight: 4, dashArray: '10, 10', opacity: 0.8
+        }).addTo(map);
+      }
+
+      window.scrollTo({ top: document.querySelector('.sos-map-section').offsetTop, behavior: 'smooth' });
+    } else {
+      alert('Precise location not provided for this request.');
+    }
   }
 
   function updateRequestStatus(id, action) {
@@ -221,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isPending = req.status === 'Pending';
         const inProgress = req.status === 'In Progress';
         
-        const color = isPending ? '#ef4444' : (inProgress ? '#f59e0b' : '#10b981');
+        const color = req.usedFallback ? '#64748b' : '#ef4444';
         
         const markerHtml = `
           <div class="custom-marker" style="background-color: ${color}; border: 2px solid white; border-radius: 50%; width: 20px; height: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>
@@ -237,8 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const marker = L.marker(latLng, { icon });
         marker.bindPopup(`
           <strong>${escapeHtml(req.userName)}</strong><br>
-          ${escapeHtml(req.status)}<br>
-          ${escapeHtml(req.distressMessage)}<br>
+          Message: ${escapeHtml(req.distressMessage)}<br>
+          Time: ${escapeHtml(new Date(req.createdAt).toLocaleString())}<br>
+          Status: ${escapeHtml(req.status)}<br>
           ${req.usedFallback ? 'Approximate state location' : escapeHtml(req.locationSource === 'gps' ? `GPS location${req.locationAccuracy ? ` ~${Math.round(req.locationAccuracy)}m` : ''}` : 'Shared location')}
         `);
         

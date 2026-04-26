@@ -2192,3 +2192,29 @@ body.dark-mode .map-overlay-hint {
   }
 }
 
+/* SOS map sizing requested for deployment stability */
+@media (min-width: 769px) {
+  .map-canvas,
+  .full-map {
+    height: 500px !important;
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .map-canvas,
+  .full-map {
+    height: 70vh !important;
+    min-height: 420px;
+  }
+
+  .sos-form {
+    grid-template-columns: 1fr;
+  }
+
+  .sos-form .btn-danger {
+    min-height: 58px;
+    font-size: 1.02rem;
+  }
+}
+
