@@ -1,7 +1,7 @@
-const CACHE_NAME = 'rakshak-v9';
+const CACHE_NAME = 'rakshak-v10';
 const ASSETS_TO_CACHE = [
   '/',
-  '/css/style.css?v=5',
+  '/css/style.css?v=6',
   '/js/main.js?v=9'
 ];
 

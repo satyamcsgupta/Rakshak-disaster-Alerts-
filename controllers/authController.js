@@ -88,7 +88,8 @@ exports.showLogin = (req, res) => {
   res.render('auth/login', {
     pageTitle: 'Login',
     error: null,
-    email: ''
+    email: '',
+    adminHint: req.query.admin === '1'
   });
 };
 
@@ -100,7 +101,8 @@ exports.login = async (req, res) => {
     return res.render('auth/login', {
       pageTitle: 'Login',
       error: 'Invalid email or password.',
-      email
+      email,
+      adminHint: false
     });
   }
 
@@ -110,7 +112,8 @@ exports.login = async (req, res) => {
     return res.render('auth/login', {
       pageTitle: 'Login',
       error: 'Invalid email or password.',
-      email
+      email,
+      adminHint: false
     });
   }
 

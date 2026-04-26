@@ -1,7 +1,7 @@
 const Alert = require('../models/Alert');
 const SOS = require('../models/SOS');
 const { fetchOfficialAlerts, getFeedUrl } = require('../services/officialAlertService');
-const { translateOfficialAlerts } = require('../services/translationService');
+const { translateOfficialAlerts, translateText } = require('../services/translationService');
 const { buildGuidance } = require('../services/alertGuidanceService');
 const { languages, languageNames, detectLanguageFromHeader } = require('../config/languages');
 const stateCoordinates = require('../config/stateCoordinates');
@@ -21,6 +21,11 @@ const getLocalizedMessage = (alert, language) => {
   const selectedLanguage = languages.find((item) => item.name === language);
   const localizedMessage = selectedLanguage ? alert[selectedLanguage.field] : '';
   return localizedMessage || alert.messageEnglish;
+};
+
+const getLocalizedPrecautions = async (alert, language) => {
+  const precautions = alert.precautions || '';
+  return translateText(precautions, language);
 };
 
 const parseCoordinate = (value) => {
@@ -229,15 +234,17 @@ exports.userAlertList = async (req, res) => {
 
   const localizedAlerts = await Promise.all(alerts.map(async (alert) => {
     const localizedMessage = getLocalizedMessage(alert, selectedLanguage);
+    const localizedPrecautions = await getLocalizedPrecautions(alert, selectedLanguage);
 
     return {
       ...alert.toObject(),
       localizedMessage,
+      localizedPrecautions,
       guidance: await buildGuidance({
         disasterType: alert.disasterType,
         severity: alert.severity,
         message: localizedMessage,
-        precautions: alert.precautions
+        precautions: localizedPrecautions
       }, selectedLanguage)
     };
   }));
@@ -316,11 +323,12 @@ exports.alertDetails = async (req, res) => {
   if (!alert) return res.status(404).render('404', { pageTitle: 'Alert Not Found' });
 
   const localizedMessage = getLocalizedMessage(alert, selectedLanguage);
+  const localizedPrecautions = await getLocalizedPrecautions(alert, selectedLanguage);
   const guidance = await buildGuidance({
     disasterType: alert.disasterType,
     severity: alert.severity,
     message: localizedMessage,
-    precautions: alert.precautions
+    precautions: localizedPrecautions
   }, selectedLanguage);
 
   res.render('alerts/show', {
@@ -328,6 +336,7 @@ exports.alertDetails = async (req, res) => {
     alert,
     selectedLanguage,
     localizedMessage,
+    localizedPrecautions,
     guidance
   });
 };

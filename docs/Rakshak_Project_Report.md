@@ -560,15 +560,15 @@ A native Android/iOS application can improve GPS reliability, background alerts,
 
 ### 2. SMS and WhatsApp Alerts
 
-The system can integrate SMS gateways or WhatsApp Business APIs for wider reach.
+The system now includes optional SMS fallback hooks through Twilio or a generic webhook provider. If provider credentials are configured in Render environment variables, the backend can send SOS details to configured admin numbers and the user's emergency contact. WhatsApp Business API integration can be added in the future for richer message delivery.
 
 ### 3. Push Notifications
 
-Browser push notifications can alert users even when the website is not open.
+The nearby SOS page supports browser notifications while responders are using the page. A full background Web Push system with stored push subscriptions can be added in the future.
 
 ### 4. Real-Time SOS Tracking
 
-Socket.io or WebSocket support can update SOS requests in real time.
+The project now supports realtime SOS updates through Server-Sent Events. New SOS requests, status updates, verification updates, accepted requests, resolved requests, and cancelled requests can be streamed to connected users in the same state.
 
 ### 5. Responder Module
 
@@ -576,7 +576,7 @@ Dedicated responder accounts can accept, navigate, and close SOS requests.
 
 ### 6. Offline Support
 
-Critical guidance and maps can be cached for offline use.
+The nearby SOS list now caches recent SOS data in browser storage, allowing users to see the last loaded list during temporary connection loss. Full offline map tiles can be added later, but they require a larger tile caching strategy.
 
 ### 7. AI-Based Alert Summary
 
@@ -606,7 +606,7 @@ The most important contribution of the project is the SOS location system. By ca
 
 The project also recognizes real-world limitations. Browser-based GPS requires user permission, HTTPS, and phone location services. Therefore, the system includes permission handling, loading messages, retry support, and approximate fallback.
 
-In conclusion, Rakshak is a useful academic and practical prototype. It can be improved further with native mobile apps, push notifications, real-time updates, responder accounts, and stronger official integrations. Even in its current form, it demonstrates a strong understanding of full-stack development and disaster management workflows.
+In conclusion, Rakshak is a useful academic and practical prototype. The latest version improves the SOS workflow with realtime updates, browser notifications while responders are online, admin verification, optional SMS fallback hooks, cached nearby SOS data, and improved route navigation from responder location to victim location. It can still be improved further with a native mobile app, full Web Push subscriptions, offline map tiles, and stronger official integrations.
 
 <div style="page-break-after: always;"></div>
 
@@ -884,7 +884,25 @@ The Get Route button opens:
 https://www.google.com/maps/dir/?api=1&destination=LAT,LNG
 ```
 
-This opens Google Maps route navigation for responders.
+The improved route system first captures the responder's current GPS location and opens Google Maps with both origin and destination:
+
+```text
+https://www.google.com/maps/dir/?api=1&origin=RESPONDER_LAT,RESPONDER_LNG&destination=VICTIM_LAT,VICTIM_LNG&travelmode=driving
+```
+
+This helps the responder start navigation from their current location instead of allowing Google Maps to choose an incorrect starting point.
+
+### Realtime SOS Updates
+
+The nearby SOS page uses Server-Sent Events to receive live SOS updates from the backend. If the realtime stream is interrupted, the frontend still uses polling as a backup.
+
+### Browser Notifications
+
+Responders can enable browser notifications on the nearby SOS page. When a new pending SOS appears in the responder's state, the page can show a browser notification while the page is active.
+
+### Offline Cache
+
+The nearby SOS list is cached in browser storage. If the network temporarily drops, the system can show the last loaded SOS list and display an offline status message.
 
 <div style="page-break-after: always;"></div>
 
@@ -924,6 +942,10 @@ All EJS views were compiled to detect template errors such as missing brackets o
 | Nearby page opened | Marker shown on map |
 | Card clicked | Map zooms to victim |
 | Get Route clicked | Google Maps opens |
+| New SOS created while nearby page is open | Realtime stream updates list |
+| Notifications enabled | Browser notification appears for new nearby SOS |
+| Network disconnected | Cached SOS list is shown if available |
+| Admin verifies SOS | Verification status and note are saved |
 
 ### Mobile Testing
 
@@ -937,7 +959,7 @@ Mobile testing focused on:
 
 ### Result
 
-The system successfully supports alert display, SOS submission, map display, and admin monitoring.
+The system successfully supports alert display, SOS submission, map display, admin monitoring, admin SOS verification, realtime nearby SOS updates, browser notifications while the page is open, and cached nearby SOS viewing during temporary network loss.
 
 <div style="page-break-after: always;"></div>
 
@@ -970,6 +992,14 @@ Dynamic data shown in JavaScript-generated cards and map popups should be escape
 ### Service Worker Safety
 
 The service worker is configured to avoid intercepting non-GET requests. This prevents SOS POST submissions from being blocked by cache logic.
+
+### Admin Verification
+
+Admin users can mark SOS requests as Unverified, Verified, Needs Review, or False Alarm. They can also add an admin note. This improves accountability and reduces confusion when requests need manual confirmation.
+
+### SMS Fallback Security
+
+SMS fallback is optional and depends on external provider credentials. Sensitive API keys such as Twilio tokens must be stored only as Render environment variables and must not be committed to GitHub.
 
 ### Recommended Improvements
 
@@ -1007,6 +1037,13 @@ Important environment variables:
 - `ADMIN_SECRET`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
+- `SMS_PROVIDER`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_FROM_NUMBER`
+- `SMS_WEBHOOK_URL`
+- `SMS_WEBHOOK_TOKEN`
+- `ADMIN_ALERT_PHONE`
 
 ### Maintenance Tasks
 
@@ -1017,6 +1054,8 @@ Important environment variables:
 - Verify service worker cache version after changes.
 - Backup database records.
 - Review admin-created alerts.
+- Check realtime SOS stream after deployment.
+- Check SMS provider logs if SMS fallback is enabled.
 
 ### Common Deployment Issues
 
@@ -1025,6 +1064,8 @@ Important environment variables:
 3. Old browser cache or service worker.
 4. HTTPS and location permission issues.
 5. Port conflicts in local development.
+6. Missing SMS provider credentials for SMS fallback.
+7. Interrupted realtime stream, where polling fallback should continue.
 
 ### Maintenance Recommendation
 
@@ -1036,6 +1077,9 @@ After every deployment, test:
 - SOS submission.
 - Nearby SOS map.
 - Admin dashboard.
+- Realtime SOS stream.
+- Browser notification permission.
+- SMS fallback logs if provider credentials are configured.
 
 <div style="page-break-after: always;"></div>
 
@@ -1048,11 +1092,11 @@ After every deployment, test:
 3. Phone GPS must be enabled.
 4. Indoor GPS accuracy may be weak.
 5. The system is a prototype, not an official government emergency system.
-6. Real-time responder tracking is not implemented.
-7. Push notifications are not implemented.
-8. SMS fallback is not implemented.
-9. Offline maps are not available.
-10. Admin verification workflow can be improved.
+6. SMS fallback requires valid provider credentials such as Twilio or webhook configuration.
+7. Browser notifications currently work best while the nearby SOS page is active; full background Web Push subscriptions are not yet implemented.
+8. Offline maps are not fully available because map tiles still require internet.
+9. Admin verification is manual and does not include automated fraud detection.
+10. The web version cannot provide native mobile background tracking like a dedicated Android/iOS app.
 
 ### Final Summary
 
@@ -1072,9 +1116,8 @@ The project also demonstrates important full-stack development concepts:
 - Deployment.
 - Responsive UI design.
 
-Although it is a prototype, Rakshak has strong potential for future improvement. With native mobile support, push notifications, SMS, real-time updates, official integrations, and responder workflows, it can become a more complete emergency response system.
+Although it is a prototype, Rakshak now includes several advanced features such as realtime SOS updates, optional SMS fallback hooks, browser notifications, cached nearby SOS data, improved responder route navigation, and admin verification. With native mobile support, full Web Push subscriptions, offline map tiles, official integrations, and responder workflows, it can become a more complete emergency response system.
 
 ### Final Statement
 
 Rakshak shows how technology can support public safety by improving disaster awareness, reducing communication gaps, and helping responders locate people in need.
-

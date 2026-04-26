@@ -7,7 +7,8 @@
     "start": "node server.js",
     "free-port": "node scripts/free-port.js",
     "dev": "npm run free-port && nodemon server.js",
-    "seed": "node seed/seed.js"
+    "seed": "node seed/seed.js",
+    "seed:demo": "node scripts/seedDemoAdminData.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

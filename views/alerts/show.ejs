@@ -17,7 +17,7 @@
       class="voice-btn voice-btn-large"
       type="button"
       data-language="<%= selectedLanguage %>"
-      data-speak="<%= `${alert.title}. ${alert.disasterType} alert for ${alert.state}. Severity ${alert.severity}. ${guidance.summary}. ${localizedMessage}. Immediate actions. ${guidance.immediateActions.join('. ')}. Precautions. ${alert.precautions}` %>"
+      data-speak="<%= `${alert.title}. ${alert.disasterType} alert for ${alert.state}. Severity ${alert.severity}. ${guidance.summary}. ${localizedMessage}. Immediate actions. ${guidance.immediateActions.join('. ')}. Precautions. ${localizedPrecautions}` %>"
     >
       Listen to Alert
     </button>
@@ -44,7 +44,7 @@
     <p><%= localizedMessage %></p>
 
     <h2>Precautions</h2>
-    <p><%= alert.precautions %></p>
+    <p><%= localizedPrecautions %></p>
 
     <section class="guidance-grid">
       <article class="mini-panel">
