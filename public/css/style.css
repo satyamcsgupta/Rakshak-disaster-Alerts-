@@ -2218,3 +2218,159 @@ body.dark-mode .map-overlay-hint {
   }
 }
 
+/* ========================================================= */
+/* --- FINAL CONTRAST AND READABILITY PATCH --- */
+/* ========================================================= */
+
+:root {
+  --bg: #f7fbff;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-hover: #e8f1fb;
+  --text: #122033;
+  --muted: #526276;
+  --border: rgba(148, 163, 184, 0.42);
+  --card-shadow: 0 16px 36px rgba(18, 32, 51, 0.1);
+  --panel-gradient: linear-gradient(180deg, #ffffff, #f6f9ff);
+}
+
+body:not(.dark-mode) {
+  color: var(--text);
+  background: radial-gradient(circle at top left, rgba(15, 118, 110, 0.11), transparent 28%),
+    radial-gradient(circle at top right, rgba(29, 78, 216, 0.1), transparent 24%),
+    linear-gradient(180deg, #f7fbff 0%, #eef4fb 100%);
+}
+
+body:not(.dark-mode) .site-header,
+body:not(.dark-mode) .site-footer {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(148, 163, 184, 0.34);
+}
+
+body:not(.dark-mode) .modern-card,
+body:not(.dark-mode) .alert-card,
+body:not(.dark-mode) .feature-card,
+body:not(.dark-mode) .stat-card,
+body:not(.dark-mode) .content-panel,
+body:not(.dark-mode) .form-panel,
+body:not(.dark-mode) .filter-panel,
+body:not(.dark-mode) .sos-panel,
+body:not(.dark-mode) .details-panel,
+body:not(.dark-mode) .side-panel,
+body:not(.dark-mode) .success-panel,
+body:not(.dark-mode) .empty-state,
+body:not(.dark-mode) .map-legend,
+body:not(.dark-mode) .map-insight-card {
+  color: var(--text);
+  background: var(--panel-gradient);
+  border-color: var(--border);
+}
+
+body:not(.dark-mode) .requester-name,
+body:not(.dark-mode) .distress-msg {
+  color: var(--text);
+}
+
+body:not(.dark-mode) .nav-links a,
+body:not(.dark-mode) .nav-links button,
+body:not(.dark-mode) .logout-form button,
+body:not(.dark-mode) .nav-user,
+body:not(.dark-mode) .contrast-toggle,
+body:not(.dark-mode) .dark-toggle,
+body:not(.dark-mode) .refresh-toggle,
+body:not(.dark-mode) .btn-secondary,
+body:not(.dark-mode) .location-btn,
+body:not(.dark-mode) .voice-btn,
+body:not(.dark-mode) .share-btn,
+body:not(.dark-mode) .small-select {
+  color: #122033;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+}
+
+body:not(.dark-mode) .btn-secondary,
+body:not(.dark-mode) .location-btn,
+body:not(.dark-mode) .refresh-toggle {
+  background: linear-gradient(180deg, #ffffff, #e8f1fb);
+}
+
+body:not(.dark-mode) .contrast-toggle,
+body:not(.dark-mode) .dark-toggle {
+  color: #0f766e;
+  background: #ecfdf5;
+  border-color: rgba(15, 118, 110, 0.28);
+}
+
+body:not(.dark-mode) .btn-primary {
+  color: #ffffff;
+  background: #0f766e;
+}
+
+body:not(.dark-mode) .btn-danger {
+  color: #ffffff;
+  background: #dc2626;
+}
+
+body:not(.dark-mode) .btn-success {
+  color: #ffffff;
+  background: #15803d;
+}
+
+body:not(.dark-mode) input,
+body:not(.dark-mode) select,
+body:not(.dark-mode) textarea {
+  color: #122033;
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+body:not(.dark-mode) input::placeholder,
+body:not(.dark-mode) textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+body:not(.dark-mode) table {
+  color: #122033;
+  background: #ffffff;
+}
+
+body:not(.dark-mode) .muted,
+body:not(.dark-mode) .time-ago {
+  color: #526276;
+}
+
+body.dark-mode .contrast-toggle,
+body.dark-mode .dark-toggle {
+  color: #e2e8f0;
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+body.dark-mode .nav-links a,
+body.dark-mode .nav-links button,
+body.dark-mode .logout-form button,
+body.dark-mode .nav-user {
+  color: #e2e8f0;
+}
+
+body.dark-mode .btn-secondary,
+body.dark-mode .location-btn,
+body.dark-mode .refresh-toggle,
+body.dark-mode .voice-btn,
+body.dark-mode .share-btn,
+body.dark-mode .small-select {
+  color: #f8fafc;
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, 0.55);
+  outline-offset: 2px;
+}
+

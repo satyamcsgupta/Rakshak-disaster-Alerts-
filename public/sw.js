@@ -1,7 +1,7 @@
 const CACHE_NAME = 'rakshak-v8';
 const ASSETS_TO_CACHE = [
   '/',
-  '/css/style.css?v=3',
+  '/css/style.css?v=4',
   '/js/main.js?v=8'
 ];
 
