@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=3">
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
@@ -35,9 +35,7 @@
           <a href="/admin">Admin</a>
           <a href="/admin/sos">SOS Requests</a>
         <% } %>
-        <% if (currentUser.role === 'volunteer' || currentUser.role === 'admin') { %>
-          <a href="/volunteer">Volunteer Hub</a>
-        <% } %>
+        <a href="/sos/nearby">Nearby SOS</a>
         <span class="nav-user"><%= currentUser.name %></span>
         <form class="logout-form" action="/auth/logout" method="POST">
           <button type="submit">Logout</button>

@@ -53,14 +53,14 @@ exports.homePage = (req, res) => {
 };
 
 exports.adminDashboard = async (req, res) => {
-  const [alertCount, sosCount, latestAlerts, highSeverityCount, mediumSeverityCount, lowSeverityCount, newSosCount, resolvedSosCount, latestSos] = await Promise.all([
+  const [alertCount, sosCount, latestAlerts, highSeverityCount, mediumSeverityCount, lowSeverityCount, pendingSosCount, resolvedSosCount, latestSos] = await Promise.all([
     Alert.countDocuments(),
     SOS.countDocuments(),
     Alert.find().sort({ createdAt: -1 }).limit(5),
     Alert.countDocuments({ severity: 'High' }),
     Alert.countDocuments({ severity: 'Medium' }),
     Alert.countDocuments({ severity: 'Low' }),
-    SOS.countDocuments({ status: 'New' }),
+    SOS.countDocuments({ status: 'Pending' }),
     SOS.countDocuments({ status: 'Resolved' }),
     SOS.find().sort({ createdAt: -1 }).limit(3)
   ]);
@@ -73,7 +73,7 @@ exports.adminDashboard = async (req, res) => {
     highSeverityCount,
     mediumSeverityCount,
     lowSeverityCount,
-    newSosCount,
+    pendingSosCount,
     resolvedSosCount,
     latestSos
   });

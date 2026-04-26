@@ -51,12 +51,11 @@
     </label>
     <p class="muted">Your preferred language will be used for all alert messages and voice playback.</p>
 
+
+
     <label>
-      Register As
-      <select name="role" required>
-        <option value="user" <%= formData.role === 'user' ? 'selected' : '' %>>Regular User (Receive Alerts)</option>
-        <option value="volunteer" <%= formData.role === 'volunteer' ? 'selected' : '' %>>Volunteer (Respond to SOS)</option>
-      </select>
+      Secret Admin Code (Optional)
+      <input type="password" name="adminCode" placeholder="Leave blank if normal user">
     </label>
 
     <label>

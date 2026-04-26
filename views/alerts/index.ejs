@@ -112,6 +112,8 @@
       <input type="hidden" name="state" value="<%= selectedState %>">
       <input type="hidden" name="latitude" id="latitude">
       <input type="hidden" name="longitude" id="longitude">
+      <input type="hidden" name="locationAccuracy" id="locationAccuracy">
+      <input type="hidden" name="locationSource" id="locationSource" value="unavailable">
       <input type="text" name="userName" placeholder="Your name (optional)">
       <button class="btn btn-danger" type="submit">I am in trouble</button>
     </form>
@@ -135,9 +137,9 @@
         <div
           id="alertMap"
           class="map-canvas"
-          data-center='<%- JSON.stringify(selectedStateCoordinates || null) %>'
-          data-markers='<%- JSON.stringify(alertMapData || []) %>'
-          data-resources='<%- JSON.stringify(resourceMapData || []) %>'
+          data-center="<%= JSON.stringify(selectedStateCoordinates || null) %>"
+          data-markers="<%= JSON.stringify(alertMapData || []) %>"
+          data-resources="<%= JSON.stringify(resourceMapData || []) %>"
           data-state="<%= selectedState %>"
         ></div>
         <button class="map-activate-overlay" type="button" id="mapActivateOverlay">

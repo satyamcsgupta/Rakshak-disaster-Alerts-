@@ -6,7 +6,7 @@
     <h1>Command Center</h1>
   </div>
   <div class="button-row">
-    <a href="/admin/new-alert" class="btn btn-primary">Create New Alert</a>
+    <a href="/admin/alerts/new" class="btn btn-primary">Create New Alert</a>
   </div>
 </div>
 
@@ -29,8 +29,8 @@
   </div>
   <div class="admin-stat-card card-new-sos">
     <span class="stat-icon">🔔</span>
-    <span class="stat-label">New SOS</span>
-    <div class="stat-value"><%= newSosCount %></div>
+    <span class="stat-label">Pending SOS</span>
+    <div class="stat-value"><%= pendingSosCount %></div>
   </div>
 </div>
 
@@ -93,7 +93,7 @@
   <div class="side-panel">
     <h3>Quick Actions</h3>
     <div class="stacked-form">
-      <a href="/admin/new-alert" class="quick-action-card">
+      <a href="/admin/alerts/new" class="quick-action-card">
         <span class="quick-action-icon">➕</span>
         <div class="quick-action-text">
           <h3>Issue Warning</h3>
@@ -104,7 +104,7 @@
         <span class="quick-action-icon">🚒</span>
         <div class="quick-action-text">
           <h3>Manage SOS</h3>
-          <p><%= newSosCount %> requests pending</p>
+          <p><%= pendingSosCount %> requests pending</p>
         </div>
       </a>
       <a href="/admin/alerts" class="quick-action-card">
@@ -127,12 +127,13 @@
       <h3>Latest Activity</h3>
       <div class="helpline-list">
         <% if (latestSos && latestSos.length > 0) { %>
+          <% latestSos.forEach((sos) => { %>
             <div class="helpline-item">
               <div>
                 <strong><%= sos.userName %></strong>
                 <p class="muted" style="margin:0; font-size: 0.8rem;"><%= sos.state %></p>
               </div>
-              <span class="badge <%= sos.status === 'Resolved' ? 'low' : (sos.status === 'New' || sos.status === 'Pending' ? 'high' : 'medium') %>">
+              <span class="badge <%= sos.status === 'Resolved' ? 'low' : (sos.status === 'Pending' ? 'high' : 'medium') %>">
                 <%= sos.status %>
               </span>
             </div>

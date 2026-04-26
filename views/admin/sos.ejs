@@ -16,7 +16,7 @@
     </div>
     <div class="map-header-actions">
       <span class="map-count-pill"><%= (sosMapData || []).length %> mapped requests</span>
-      <span class="muted">Live coordinates when shared, state center otherwise</span>
+      <span class="muted">GPS coordinates when permission is granted, state center otherwise</span>
     </div>
   </div>
   <div class="map-shell admin-map-shell">
@@ -24,7 +24,7 @@
       <div
         id="sosMap"
         class="map-canvas"
-        data-markers='<%- JSON.stringify(sosMapData || []) %>'
+        data-markers="<%= JSON.stringify(sosMapData || []) %>"
       ></div>
       <% if ((sosMapData || []).length === 0) { %>
         <div class="map-empty-state">
@@ -83,8 +83,16 @@
                 </form>
               </td>
               <td>
-                <% if (request.latitude && request.longitude) { %>
+                <% if (request.latitude !== null && request.latitude !== undefined && request.longitude !== null && request.longitude !== undefined) { %>
                   <%= request.latitude %>, <%= request.longitude %>
+                  <br>
+                  <% if (request.locationSource === 'gps') { %>
+                    <span class="badge low">GPS exact<%= request.locationAccuracy ? ` ~${Math.round(request.locationAccuracy)}m` : '' %></span>
+                  <% } else if (request.locationSource === 'ip') { %>
+                    <span class="badge medium">Approx IP location</span>
+                  <% } else { %>
+                    <span class="badge medium">Shared coordinates</span>
+                  <% } %>
                   <br>
                   <a href="https://www.google.com/maps/dir/?api=1&destination=<%= request.latitude %>,<%= request.longitude %>" target="_blank" class="small-link">🧭 Open in Maps</a>
                 <% } else { %>

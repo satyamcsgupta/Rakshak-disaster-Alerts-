@@ -39,6 +39,19 @@ const sosSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  locationAccuracy: {
+    type: Number,
+    default: null
+  },
+  locationSource: {
+    type: String,
+    enum: ['gps', 'ip', 'manual', 'unavailable'],
+    default: 'unavailable'
+  },
+  locationCapturedAt: {
+    type: Date,
+    default: null
+  },
   status: {
     type: String,
     enum: ['Pending', 'In Progress', 'Resolved'],

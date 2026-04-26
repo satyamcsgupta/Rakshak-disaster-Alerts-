@@ -5,4 +5,11 @@ const { requireAuth } = require('../middleware/authMiddleware');
 
 router.post('/', requireAuth, sosController.createSOS);
 
+// Nearby SOS features for normal users
+router.get('/nearby', requireAuth, sosController.nearbySOS);
+router.get('/api/requests', requireAuth, sosController.getNearbyRequests);
+router.post('/:id/accept', requireAuth, sosController.acceptRequest);
+router.post('/:id/resolve', requireAuth, sosController.resolveRequest);
+router.post('/:id/cancel', requireAuth, sosController.cancelRequest);
+
 module.exports = router;

@@ -1,0 +1,39 @@
+<%- include('../partials/header') %>
+
+<div class="nearby-sos-layout">
+  <section class="sos-cards-section">
+    <div class="section-header">
+      <div>
+        <p class="eyebrow">Local Emergencies</p>
+        <h2>Nearby SOS Requests</h2>
+      </div>
+      <div class="controls">
+        <select id="statusFilter" class="small-select">
+          <option value="All">All Status</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+        </select>
+        <button id="refreshBtn" class="btn btn-secondary btn-small">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="sosList" class="sos-card-grid">
+      <!-- AJAX populated cards -->
+      <div class="list-loading">Loading requests...</div>
+    </div>
+  </section>
+
+  <section class="sos-map-section">
+    <div class="map-container-wrap">
+      <div id="sosMap" class="full-map"></div>
+      <div id="mapOverlay" class="map-overlay-hint">Select a request to view on map</div>
+    </div>
+  </section>
+</div>
+
+<script>
+  window.USER_STATE = "<%= user.state %>";
+</script>
+<script src="/js/sos.js?v=2"></script>
+
+<%- include('../partials/footer') %>

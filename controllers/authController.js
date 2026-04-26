@@ -25,12 +25,16 @@ exports.register = async (req, res) => {
     state,
     city,
     language,
-    role,
+    adminCode,
     emergencyContactName,
     emergencyContactPhone
   } = req.body;
 
-  const finalRole = ['user', 'volunteer'].includes(role) ? role : 'user';
+  let finalRole = 'user';
+  const secretCode = process.env.ADMIN_SECRET || 'ADMIN123';
+  if (adminCode && adminCode === secretCode) {
+    finalRole = 'admin';
+  }
 
   if (password !== confirmPassword) {
     return res.render('auth/register', buildRegisterViewModel(req.body, 'Password and confirm password must match.'));

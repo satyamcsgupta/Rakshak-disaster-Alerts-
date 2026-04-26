@@ -15,6 +15,8 @@ const alertContent = document.getElementById('alertContent');
 /* ── Constants ── */
 const DARK_MODE_KEY = 'rakshakDarkMode';
 const ACCESSIBILITY_MODE_KEY = 'disasterhelpAccessibilityMode';
+const USER_LOCATION_KEY = 'rakshakLastKnownLocation';
+const LOCATION_MAX_AGE_MS = 5 * 60 * 1000;
 
 const stateCenters = [
   { state: 'Maharashtra', latitude: 19.75, longitude: 75.71 },
@@ -26,6 +28,72 @@ const stateCenters = [
   { state: 'Rajasthan', latitude: 27.02, longitude: 74.21 },
   { state: 'West Bengal', latitude: 22.98, longitude: 87.85 }
 ];
+
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[char]));
+
+const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+const canUsePreciseLocation = () => window.isSecureContext || isLocalhost;
+
+const saveLastKnownLocation = (coords, source = 'gps') => {
+  if (!coords) return;
+
+  const payload = {
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    accuracy: coords.accuracy || '',
+    source,
+    capturedAt: Date.now()
+  };
+
+  try {
+    window.localStorage.setItem(USER_LOCATION_KEY, JSON.stringify(payload));
+  } catch (error) {
+    // Location still submits even if browser storage is unavailable.
+  }
+};
+
+const getLastKnownLocation = () => {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(USER_LOCATION_KEY) || 'null');
+    if (!saved || !saved.latitude || !saved.longitude) return null;
+    if (Date.now() - saved.capturedAt > LOCATION_MAX_AGE_MS) return null;
+    return saved;
+  } catch (error) {
+    return null;
+  }
+};
+
+const requestAndCacheUserLocation = ({ showStatus = false } = {}) => new Promise((resolve) => {
+  if (!navigator.geolocation || !canUsePreciseLocation()) {
+    resolve(null);
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      saveLastKnownLocation(pos.coords, 'gps');
+      if (showStatus) {
+        showToast(`Location ready within about ${Math.round(pos.coords.accuracy || 0)} meters.`, 'success');
+      }
+      resolve({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        source: 'gps'
+      });
+    },
+    () => {
+      resolve(null);
+    },
+    { timeout: 15000, maximumAge: 0, enableHighAccuracy: true }
+  );
+});
 
 /* ── 1. Accessibility & Dark Mode ── */
 const applyDarkMode = (enabled) => {
@@ -228,6 +296,8 @@ const initLeafletMap = (elId, options = {}) => {
   });
 
   L.control.layers({ "Street View": base, "Satellite": satellite }, {}, { collapsed: true }).addTo(map);
+  setTimeout(() => map.invalidateSize(), 150);
+  setTimeout(() => map.invalidateSize(), 600);
   return map;
 };
 
@@ -266,6 +336,18 @@ const addUserLocationToMap = (map, btn) => {
   );
 };
 
+const setSosLocationFields = (form, { latitude, longitude, accuracy = '', source = 'unavailable' }) => {
+  const latitudeInput = form.querySelector('[name="latitude"]');
+  const longitudeInput = form.querySelector('[name="longitude"]');
+  const accuracyInput = form.querySelector('[name="locationAccuracy"]');
+  const sourceInput = form.querySelector('[name="locationSource"]');
+
+  if (latitudeInput) latitudeInput.value = latitude ?? '';
+  if (longitudeInput) longitudeInput.value = longitude ?? '';
+  if (accuracyInput) accuracyInput.value = accuracy ?? '';
+  if (sourceInput) sourceInput.value = source;
+};
+
 const setupAlertMap = (mapEl) => {
   const center = JSON.parse(mapEl.dataset.center || 'null');
   const markers = JSON.parse(mapEl.dataset.markers || '[]');
@@ -279,7 +361,7 @@ const setupAlertMap = (mapEl) => {
 
   markers.forEach(m => {
     L.marker([m.latitude, m.longitude], { icon: mapIcons.severity(m.severity) })
-      .bindPopup(`<strong>${m.title}</strong><br>${m.disasterType}<br>Severity: ${m.severity}`)
+      .bindPopup(`<strong>${escapeHtml(m.title)}</strong><br>${escapeHtml(m.disasterType)}<br>Severity: ${escapeHtml(m.severity)}`)
       .addTo(cluster);
   });
   
@@ -287,7 +369,7 @@ const setupAlertMap = (mapEl) => {
   const resourceLayer = L.featureGroup();
   resources.forEach(r => {
     L.marker([r.latitude, r.longitude], { icon: mapIcons.resource(r.type) })
-      .bindPopup(`<strong>${r.name}</strong><br>${r.type}<br>Capacity: ${r.capacity}<br>${r.contact}`)
+      .bindPopup(`<strong>${escapeHtml(r.name)}</strong><br>${escapeHtml(r.type)}<br>Capacity: ${escapeHtml(r.capacity)}<br>${escapeHtml(r.contact)}`)
       .addTo(resourceLayer);
   });
   
@@ -343,94 +425,68 @@ const setupAlertMap = (mapEl) => {
   return map;
 };
 
-let activeSosMap = null;
-let activeRoutingLayer = null;
-
-const setupSosMap = (mapEl) => {
+const setupAdminSosMap = (mapEl) => {
   if (!mapEl) return;
-  console.log('Initializing SOS Map...');
-
+  
   let markers = [];
-  let center = null;
   try {
     markers = JSON.parse(mapEl.dataset.markers || '[]');
-    center = JSON.parse(mapEl.dataset.center || 'null');
   } catch (e) {
-    console.error('Failed to parse SOS map data', e);
+    console.error('Failed to parse admin map data', e);
   }
 
-  if (!markers.length && !center) {
-    console.log('No markers or center for SOS map');
-    return;
-  }
+  const center = markers.length ? [markers[0].latitude, markers[0].longitude] : [20.5937, 78.9629];
+  const map = initLeafletMap(mapEl.id, { center, zoom: 6 });
+  if (!map) return;
 
-  const initialCenter = center ? [center.latitude, center.longitude] : (markers.length ? [markers[0].latitude, markers[0].longitude] : [20.5937, 78.9629]);
-  const map = initLeafletMap(mapEl.id, { center: initialCenter, zoom: 6, dragging: true, scrollWheelZoom: true });
-  
-  if (!map) {
-    console.error('initLeafletMap returned null for', mapEl.id);
-    const errEl = document.getElementById('mapError');
-    if (errEl) errEl.style.display = 'block';
-    return;
-  }
-
-  activeSosMap = map;
-  
-  const mapMarkers = {};
-  markers.forEach(m => {
-    const marker = L.marker([m.latitude, m.longitude], { icon: mapIcons.sos(m.status) })
-      .bindPopup(`<strong>${m.userName}</strong><br>${m.distressMessage}<br><small>Status: ${m.status}</small>`)
-      .addTo(map);
-    
-    if (m.id) mapMarkers[m.id] = marker;
+  const markersLayer = L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 50
   });
 
-  const resetBtn = document.getElementById('resetMapBtn');
-  if (resetBtn) resetBtn.onclick = () => {
-    if (center) map.setView([center.latitude, center.longitude], 6);
-    else if (markers.length) map.setView([markers[0].latitude, markers[0].longitude], 6);
-    if (activeRoutingLayer) map.removeLayer(activeRoutingLayer);
-  };
+  const bounds = L.latLngBounds();
 
-  const locateBtn = document.getElementById('locateOnMapBtn');
-  if (locateBtn) locateBtn.onclick = () => addUserLocationToMap(map, locateBtn);
+  markers.forEach(m => {
+    if (m.latitude && m.longitude) {
+      const latLng = [m.latitude, m.longitude];
+      const isPending = m.status === 'Pending';
+      const inProgress = m.status === 'In Progress';
+      const color = m.usedFallback ? '#64748b' : (isPending ? '#ef4444' : (inProgress ? '#f59e0b' : '#10b981'));
+      
+      const markerHtml = `
+        <div class="custom-marker" style="background-color: ${color}; border: 2px solid white; border-radius: 50%; width: 16px; height: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>
+      `;
 
-  // Expose focus function
-  window.focusOnSosRequest = (id, lat, lng) => {
-    if (!activeSosMap) return;
-    
-    activeSosMap.setView([lat, lng], 14);
-    if (mapMarkers[id]) mapMarkers[id].openPopup();
-    
-    // Attempt to draw a path if we have user location
-    if (activeSosMap.userLayer) {
-      const userLatLng = activeSosMap.userLayer.getBounds().getCenter();
-      if (activeRoutingLayer) activeSosMap.removeLayer(activeRoutingLayer);
+      const icon = L.divIcon({ html: markerHtml, className: '', iconSize: [16, 16], iconAnchor: [8, 8] });
+      const marker = L.marker(latLng, { icon });
       
-      activeRoutingLayer = L.polyline([userLatLng, [lat, lng]], {
-        color: '#ef4444', weight: 4, dashArray: '10, 10', opacity: 0.8
-      }).addTo(activeSosMap);
-      
-      activeSosMap.fitBounds(activeRoutingLayer.getBounds(), { padding: [40, 40] });
-      showToast('Path drawn on map.', 'info');
-    } else {
-      showToast('Click "My Position" first to see the path.', 'warning');
+      const locationLabel = m.usedFallback
+        ? 'Approximate state fallback'
+        : (m.locationSource === 'gps'
+          ? `GPS exact${m.locationAccuracy ? ` ~${Math.round(m.locationAccuracy)}m` : ''}`
+          : (m.locationSource === 'ip' ? 'Approximate IP location' : 'Shared coordinates'));
+      const directionsLink = m.directionsUrl
+        ? `<br><a href="${escapeHtml(m.directionsUrl)}" target="_blank" rel="noopener">Open directions</a>`
+        : '';
+
+      marker.bindPopup(`<strong>${escapeHtml(m.userName)}</strong><br>${escapeHtml(m.status)}<br>${escapeHtml(m.distressMessage)}<br>${escapeHtml(locationLabel)}${directionsLink}`);
+      markersLayer.addLayer(marker);
+      bounds.extend(latLng);
     }
-    
-    // Smooth scroll to map
-    const mapContainer = document.getElementById('sosMap');
-    if (mapContainer) mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
+  });
 
-  return map;
-};
-
-const initAllMaps = () => {
+  map.addLayer(markersLayer);
+  if (markers.length > 0 && bounds.isValid()) {
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+  }
+};const initAllMaps = () => {
   const alertMapEl = document.getElementById('alertMap');
   if (alertMapEl) setupAlertMap(alertMapEl);
 
-  const sosMapEl = document.getElementById('sosMap');
-  if (sosMapEl) setupSosMap(sosMapEl);
+  const adminSosMapEl = document.getElementById('sosMap');
+  if (adminSosMapEl && adminSosMapEl.hasAttribute('data-markers')) {
+    setupAdminSosMap(adminSosMapEl);
+  }
 
   const fullMapEl = document.getElementById('fullAlertMap');
   if (fullMapEl) setupAlertMap(fullMapEl);
@@ -547,6 +603,80 @@ const init = () => {
   if (form) {
     form.addEventListener('submit', handleFilterSubmit);
   }
+
+  const sosForm = document.getElementById('sosForm');
+  if (sosForm) {
+    sosForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const btn = sosForm.querySelector('button[type="submit"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+      }
+
+      const fallbackToIp = () => {
+        fetch('https://ipapi.co/json/')
+          .then(res => res.json())
+          .then(data => {
+            if (data.latitude && data.longitude) {
+              setSosLocationFields(sosForm, {
+                latitude: data.latitude,
+                longitude: data.longitude,
+                source: 'ip'
+              });
+              showToast('Using network IP location as fallback.', 'info');
+            } else {
+              setSosLocationFields(sosForm, { source: 'unavailable' });
+              alert('Could not determine exact location. Using approximate state fallback.');
+            }
+            sosForm.submit();
+          })
+          .catch(() => {
+            setSosLocationFields(sosForm, { source: 'unavailable' });
+            alert('Location services unavailable. Using approximate state fallback.');
+            sosForm.submit();
+          });
+      };
+
+      if (!canUsePreciseLocation()) {
+        showToast('Exact GPS needs HTTPS. Sending SOS with approximate location.', 'warning');
+        fallbackToIp();
+        return;
+      }
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            saveLastKnownLocation(pos.coords, 'gps');
+            setSosLocationFields(sosForm, {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              source: 'gps'
+            });
+            showToast(`GPS location captured within about ${Math.round(pos.coords.accuracy || 0)} meters.`, 'success');
+            sosForm.submit();
+          },
+          (err) => {
+            console.warn('GPS failed or blocked:', err);
+            const cachedLocation = getLastKnownLocation();
+            if (cachedLocation) {
+              setSosLocationFields(sosForm, cachedLocation);
+              showToast('Using your recent GPS location for SOS.', 'info');
+              sosForm.submit();
+              return;
+            }
+            fallbackToIp();
+          },
+          { timeout: 15000, maximumAge: 0, enableHighAccuracy: true }
+        );
+      } else {
+        fallbackToIp();
+      }
+    });
+  }
+
+  requestAndCacheUserLocation({ showStatus: false });
 
   // Auto Refresh logic
   const startAutoRefresh = () => {
