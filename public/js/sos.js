@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let knownRequestIds = new Set();
   let hasLoadedOnce = false;
   let livePollTimer = null;
+  let eventSource = null;
+  const SOS_CACHE_KEY = 'rakshakNearbySOSCache';
 
   function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; // Radius of the earth in km
@@ -24,6 +26,77 @@ document.addEventListener('DOMContentLoaded', () => {
       Math.sin(dLon/2) * Math.sin(dLon/2); 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
     return R * c; // Distance in km
+  }
+
+  function getCurrentResponderLocation() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported.'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy
+          });
+        },
+        reject,
+        {
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 0
+        }
+      );
+    });
+  }
+
+  function openRouteFromCurrentLocation(request, button) {
+    if (!request || !request.latitude || !request.longitude || request.usedFallback) {
+      alert('Exact victim GPS location is not available for route navigation.');
+      return;
+    }
+
+    const routeWindow = window.open('', '_blank');
+    const oldLabel = button ? button.textContent : '';
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Getting your location...';
+    }
+
+    getCurrentResponderLocation()
+      .then((origin) => {
+        userLocation = { lat: origin.latitude, lng: origin.longitude };
+        const url = new URL('https://www.google.com/maps/dir/');
+        url.searchParams.set('api', '1');
+        url.searchParams.set('origin', `${origin.latitude},${origin.longitude}`);
+        url.searchParams.set('destination', `${request.latitude},${request.longitude}`);
+        url.searchParams.set('travelmode', 'driving');
+
+        if (routeWindow) {
+          routeWindow.location.href = url.toString();
+        } else {
+          window.location.href = url.toString();
+        }
+      })
+      .catch((error) => {
+        console.warn('Responder route location failed:', error);
+        const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${request.latitude},${request.longitude}&travelmode=driving`;
+        alert('Could not get your exact current location. Opening route with Google Maps current-location fallback.');
+        if (routeWindow) {
+          routeWindow.location.href = fallbackUrl;
+        } else {
+          window.location.href = fallbackUrl;
+        }
+      })
+      .finally(() => {
+        if (button) {
+          button.disabled = false;
+          button.textContent = oldLabel || 'Get Route';
+        }
+      });
   }
 
   function escapeHtml(value) {
@@ -46,6 +119,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'Notification' in window && Notification.permission === 'granted';
   }
 
+  function showBrowserNotification(title, body) {
+    if (!canNotify()) return;
+
+    if (navigator.serviceWorker?.ready) {
+      navigator.serviceWorker.ready
+        .then((registration) => registration.showNotification(title, { body }))
+        .catch(() => new Notification(title, { body }));
+      return;
+    }
+
+    new Notification(title, { body });
+  }
+
   function notifyNewRequests(requests) {
     if (!hasLoadedOnce) return;
 
@@ -54,12 +140,29 @@ document.addEventListener('DOMContentLoaded', () => {
       if (knownRequestIds.has(id) || request.isOwner || request.status !== 'Pending') return;
       knownRequestIds.add(id);
 
-      if (canNotify()) {
-        new Notification('New SOS nearby', {
-          body: `${request.userName || 'Someone'}: ${request.distressMessage || 'Needs help'}`
-        });
-      }
+      showBrowserNotification('New SOS nearby', `${request.userName || 'Someone'}: ${request.distressMessage || 'Needs help'}`);
     });
+  }
+
+  function cacheRequests(requests) {
+    try {
+      localStorage.setItem(SOS_CACHE_KEY, JSON.stringify({
+        savedAt: Date.now(),
+        requests
+      }));
+    } catch (error) {
+      // Live mode should continue even if storage is blocked.
+    }
+  }
+
+  function loadCachedRequests() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(SOS_CACHE_KEY) || 'null');
+      if (!cached?.requests?.length) return null;
+      return cached;
+    } catch (error) {
+      return null;
+    }
   }
   
   // Initialize Leaflet Map
@@ -83,8 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // (This would normally use the stateCoordinates from the backend)
   }
 
-  function fetchRequests({ notify = false } = {}) {
-    sosList.innerHTML = '<div class="list-loading">Loading requests...</div>';
+  function fetchRequests({ notify = false, silent = false } = {}) {
+    if (!silent) sosList.innerHTML = '<div class="list-loading">Loading requests...</div>';
     const status = statusFilter.value;
     
     fetch(`/sos/api/requests?status=${encodeURIComponent(status)}`)
@@ -92,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(data => {
         if (data.success) {
           currentRequests = data.requests;
+          cacheRequests(currentRequests);
           if (notify) notifyNewRequests(currentRequests);
           currentRequests.forEach((request) => knownRequestIds.add(String(request._id)));
           hasLoadedOnce = true;
@@ -101,9 +205,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       })
       .catch(err => {
+        const cached = loadCachedRequests();
+        if (cached) {
+          currentRequests = cached.requests;
+          renderRequests(currentRequests);
+          updateMap(currentRequests);
+          setLiveStatus(`Offline mode: showing cached SOS from ${new Date(cached.savedAt).toLocaleTimeString()}.`, 'warning');
+          return;
+        }
+
         sosList.innerHTML = '<div class="error-box">Failed to load requests.</div>';
         setLiveStatus('Connection issue. Retrying live SOS updates...', 'error');
       });
+  }
+
+  function connectLiveStream() {
+    if (!window.EventSource || eventSource) return;
+
+    eventSource = new EventSource('/sos/api/stream');
+
+    eventSource.addEventListener('connected', () => {
+      setLiveStatus('Realtime SOS stream connected.', 'success');
+    });
+
+    eventSource.addEventListener('sos', (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type === 'created' && payload.request) {
+        notifyNewRequests([payload.request]);
+      }
+      fetchRequests({ notify: false, silent: true });
+    });
+
+    eventSource.onerror = () => {
+      setLiveStatus('Realtime stream interrupted. Polling backup is active.', 'warning');
+    };
   }
 
   function renderRequests(requests) {
@@ -134,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const mapLink = req.latitude && req.longitude && !req.usedFallback
-        ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${req.latitude},${req.longitude}" target="_blank" class="btn btn-secondary btn-small w-full route-btn" style="grid-column: 1 / -1;">Get Route</a>`
+        ? `<button type="button" class="btn btn-secondary btn-small w-full route-btn" data-id="${req._id}" style="grid-column: 1 / -1;">Get Route</button>`
         : '';
         
       let distanceHtml = '';
@@ -201,6 +336,14 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', (e) => {
         const id = e.target.dataset.id;
         focusRequestOnMap(id);
+      });
+    });
+
+    document.querySelectorAll('.route-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const request = currentRequests.find(r => r._id === e.currentTarget.dataset.id);
+        openRouteFromCurrentLocation(request, e.currentTarget);
       });
     });
 
@@ -357,9 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fetchRequests();
+  connectLiveStream();
   livePollTimer = setInterval(() => {
     if (!document.hidden && navigator.onLine) {
-      fetchRequests({ notify: true });
+      fetchRequests({ notify: true, silent: true });
     }
   }, 30000);
 });

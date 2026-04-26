@@ -36,6 +36,25 @@ MONGO_URI=mongodb://127.0.0.1:27017/disaster_alert_mvp
 SESSION_SECRET=any-simple-secret-for-local-use
 ```
 
+Optional SMS fallback for SOS:
+
+```bash
+# Twilio option
+SMS_PROVIDER=twilio
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_FROM_NUMBER=+1234567890
+ADMIN_ALERT_PHONE=+919999999999,+918888888888
+
+# Generic webhook option
+SMS_PROVIDER=webhook
+SMS_WEBHOOK_URL=https://your-sms-provider.example/send
+SMS_WEBHOOK_TOKEN=optional_token
+ADMIN_ALERT_PHONE=+919999999999
+```
+
+If SMS variables are not configured, SOS still saves normally and realtime web alerts still work.
+
 3. Make sure MongoDB is running locally.
 
 4. Insert sample alerts:

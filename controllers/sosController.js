@@ -1,6 +1,8 @@
 const SOS = require('../models/SOS');
 const { states } = require('./alertController');
 const stateCoordinates = require('../config/stateCoordinates');
+const { sosEventBus, publishSOSEvent } = require('../services/sosEventBus');
+const { sendSOSFallbackSMS } = require('../services/smsService');
 
 const parseCoordinate = (value) => {
   if (value === '' || value === undefined || value === null) {
@@ -22,6 +24,29 @@ const hasGpsCoordinates = (request) => (
   && request.longitude !== null
   && request.longitude !== undefined
 );
+
+const buildSOSSummary = (sos) => ({
+  _id: sos._id,
+  userName: sos.userName,
+  state: sos.state,
+  city: sos.city,
+  status: sos.status,
+  distressMessage: sos.distressMessage,
+  latitude: sos.latitude,
+  longitude: sos.longitude,
+  locationAccuracy: sos.locationAccuracy,
+  locationSource: sos.locationSource,
+  verificationStatus: sos.verificationStatus || 'Unverified',
+  createdAt: sos.createdAt
+});
+
+const publishSOSChange = (type, sos) => {
+  publishSOSEvent({
+    type,
+    state: sos.state,
+    request: buildSOSSummary(sos)
+  });
+};
 
 exports.createSOS = async (req, res) => {
   const {
@@ -60,6 +85,10 @@ exports.createSOS = async (req, res) => {
   console.log('Captured Latitude:', sos.latitude ?? '');
   console.log('Captured Longitude:', sos.longitude ?? '');
   console.log('Saved Successfully');
+  publishSOSChange('created', sos);
+  sendSOSFallbackSMS(sos).catch((error) => {
+    console.error('SMS fallback error:', error.message);
+  });
 
   res.render('sos-success', {
     pageTitle: 'SOS Sent',
@@ -102,9 +131,11 @@ exports.adminSOSList = async (req, res) => {
 };
 
 exports.updateSOSStatus = async (req, res) => {
-  await SOS.findByIdAndUpdate(req.params.id, {
+  const sos = await SOS.findByIdAndUpdate(req.params.id, {
     status: req.body.status
-  }, { runValidators: true });
+  }, { new: true, runValidators: true });
+
+  if (sos) publishSOSChange('status-updated', sos);
 
   res.redirect('/admin/sos');
 };
@@ -115,12 +146,14 @@ exports.updateSOSVerification = async (req, res) => {
     ? req.body.verificationStatus
     : 'Unverified';
 
-  await SOS.findByIdAndUpdate(req.params.id, {
+  const sos = await SOS.findByIdAndUpdate(req.params.id, {
     verificationStatus,
     adminNote: req.body.adminNote || '',
     verifiedBy: req.session.user.id,
     verifiedAt: new Date()
-  }, { runValidators: true });
+  }, { new: true, runValidators: true });
+
+  if (sos) publishSOSChange('verification-updated', sos);
 
   res.redirect('/admin/sos');
 };
@@ -171,6 +204,37 @@ exports.getNearbyRequests = async (req, res) => {
   }
 };
 
+exports.streamSOSUpdates = (req, res) => {
+  const user = req.session.user;
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  const send = (event) => {
+    const canSeeEvent = user.role === 'admin' || event.state === user.state;
+    if (!canSeeEvent) return;
+    res.write(`event: sos\\n`);
+    res.write(`data: ${JSON.stringify(event)}\\n\\n`);
+  };
+
+  res.write(`event: connected\\n`);
+  res.write(`data: ${JSON.stringify({ state: user.state, at: new Date().toISOString() })}\\n\\n`);
+
+  sosEventBus.on('sos-event', send);
+  const heartbeat = setInterval(() => {
+    res.write(`event: heartbeat\\n`);
+    res.write(`data: ${JSON.stringify({ at: new Date().toISOString() })}\\n\\n`);
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    sosEventBus.off('sos-event', send);
+    res.end();
+  });
+};
+
 exports.acceptRequest = async (req, res) => {
   try {
     const user = req.session.user;
@@ -188,6 +252,7 @@ exports.acceptRequest = async (req, res) => {
       assignedVolunteer: user.id, // kept for DB compatibility
       responderName: user.name
     }, { new: true });
+    publishSOSChange('accepted', request);
     res.json({ success: true, request });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -206,6 +271,7 @@ exports.resolveRequest = async (req, res) => {
 
     sos.status = 'Resolved';
     await sos.save();
+    publishSOSChange('resolved', sos);
     res.json({ success: true, message: 'Request marked resolved' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -219,6 +285,7 @@ exports.cancelRequest = async (req, res) => {
     if (!ownsRequest(sos, req.session.user)) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
+    publishSOSChange('cancelled', sos);
     await SOS.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Request cancelled' });
   } catch (error) {

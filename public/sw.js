@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rakshak-v8';
+const CACHE_NAME = 'rakshak-v9';
 const ASSETS_TO_CACHE = [
   '/',
   '/css/style.css?v=5',
@@ -51,6 +51,17 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      const sosClient = clientList.find((client) => client.url.includes('/sos/nearby'));
+      if (sosClient) return sosClient.focus();
+      return clients.openWindow('/sos/nearby');
     })
   );
 });
