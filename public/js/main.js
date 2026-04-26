@@ -95,6 +95,17 @@ const requestAndCacheUserLocation = ({ showStatus = false } = {}) => new Promise
   );
 });
 
+const getLocationPermissionState = async () => {
+  if (!navigator.permissions?.query) return 'unknown';
+
+  try {
+    const result = await navigator.permissions.query({ name: 'geolocation' });
+    return result.state;
+  } catch (error) {
+    return 'unknown';
+  }
+};
+
 /* ── 1. Accessibility & Dark Mode ── */
 const applyDarkMode = (enabled) => {
   document.body.classList.toggle('dark-mode', enabled);
@@ -606,7 +617,7 @@ const init = () => {
 
   const sosForm = document.getElementById('sosForm');
   if (sosForm) {
-    sosForm.addEventListener('submit', (e) => {
+    sosForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = sosForm.querySelector('button[type="submit"]');
       if (btn) {
@@ -614,37 +625,44 @@ const init = () => {
         btn.textContent = 'Sending...';
       }
 
-      const fallbackToIp = () => {
-        fetch('https://ipapi.co/json/')
-          .then(res => res.json())
-          .then(data => {
-            if (data.latitude && data.longitude) {
-              setSosLocationFields(sosForm, {
-                latitude: data.latitude,
-                longitude: data.longitude,
-                source: 'ip'
-              });
-              showToast('Using network IP location as fallback.', 'info');
-            } else {
-              setSosLocationFields(sosForm, { source: 'unavailable' });
-              alert('Could not determine exact location. Using approximate state fallback.');
-            }
-            sosForm.submit();
-          })
-          .catch(() => {
-            setSosLocationFields(sosForm, { source: 'unavailable' });
-            alert('Location services unavailable. Using approximate state fallback.');
-            sosForm.submit();
-          });
+      const submitWithoutExactLocation = (message) => {
+        setSosLocationFields(sosForm, { source: 'unavailable' });
+        alert(message);
+        sosForm.submit();
+      };
+
+      const requestPermissionAndRetry = async (message) => {
+        const shouldRetry = confirm(`${message}\n\nPress OK after turning on phone Location/GPS and allowing location permission. Press Cancel to send SOS without exact location.`);
+        if (!shouldRetry) {
+          submitWithoutExactLocation('SOS sent without exact GPS location.');
+          return;
+        }
+
+        if (btn) btn.textContent = 'Getting location...';
+        const freshLocation = await requestAndCacheUserLocation({ showStatus: true });
+
+        if (freshLocation) {
+          setSosLocationFields(sosForm, freshLocation);
+          sosForm.submit();
+          return;
+        }
+
+        submitWithoutExactLocation('Still could not get exact GPS location. Please check browser permission and phone Location settings.');
       };
 
       if (!canUsePreciseLocation()) {
-        showToast('Exact GPS needs HTTPS. Sending SOS with approximate location.', 'warning');
-        fallbackToIp();
+        submitWithoutExactLocation('Exact GPS needs HTTPS. SOS will be sent, but exact location is not available.');
         return;
       }
 
       if (navigator.geolocation) {
+        const permissionState = await getLocationPermissionState();
+        if (permissionState === 'denied') {
+          await requestPermissionAndRetry('Location permission is blocked for this website. Please enable location permission from browser/site settings.');
+          return;
+        }
+
+        if (btn) btn.textContent = 'Getting location...';
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             saveLastKnownLocation(pos.coords, 'gps');
@@ -662,16 +680,21 @@ const init = () => {
             const cachedLocation = getLastKnownLocation();
             if (cachedLocation) {
               setSosLocationFields(sosForm, cachedLocation);
-              showToast('Using your recent GPS location for SOS.', 'info');
-              sosForm.submit();
+              const useCached = confirm('Exact live GPS is not available right now. Use your recent GPS location for SOS? Press Cancel to retry location permission.');
+              if (useCached) {
+                showToast('Using your recent GPS location for SOS.', 'info');
+                sosForm.submit();
+              } else {
+                requestPermissionAndRetry('Please allow location permission and keep phone GPS on for exact SOS location.');
+              }
               return;
             }
-            fallbackToIp();
+            requestPermissionAndRetry('Exact GPS location was not available. Please allow location permission and keep phone GPS on for exact SOS location.');
           },
           { timeout: 15000, maximumAge: 0, enableHighAccuracy: true }
         );
       } else {
-        fallbackToIp();
+        submitWithoutExactLocation('This browser does not support GPS location. SOS will be sent without exact location.');
       }
     });
   }

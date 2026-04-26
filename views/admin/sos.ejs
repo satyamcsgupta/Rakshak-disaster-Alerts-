@@ -83,18 +83,16 @@
                 </form>
               </td>
               <td>
-                <% if (request.latitude !== null && request.latitude !== undefined && request.longitude !== null && request.longitude !== undefined) { %>
+                <% if (request.locationSource === 'gps' && request.latitude !== null && request.latitude !== undefined && request.longitude !== null && request.longitude !== undefined) { %>
                   <%= request.latitude %>, <%= request.longitude %>
                   <br>
-                  <% if (request.locationSource === 'gps') { %>
-                    <span class="badge low">GPS exact<%= request.locationAccuracy ? ` ~${Math.round(request.locationAccuracy)}m` : '' %></span>
-                  <% } else if (request.locationSource === 'ip') { %>
-                    <span class="badge medium">Approx IP location</span>
-                  <% } else { %>
-                    <span class="badge medium">Shared coordinates</span>
-                  <% } %>
+                  <span class="badge low">GPS exact<%= request.locationAccuracy ? ` ~${Math.round(request.locationAccuracy)}m` : '' %></span>
                   <br>
                   <a href="https://www.google.com/maps/dir/?api=1&destination=<%= request.latitude %>,<%= request.longitude %>" target="_blank" class="small-link">🧭 Open in Maps</a>
+                <% } else if (request.locationSource === 'ip') { %>
+                  <span class="badge medium">Approx IP location</span>
+                  <br>
+                  <span class="muted">Exact GPS not shared</span>
                 <% } else { %>
                   <span class="muted">Not shared</span>
                 <% } %>

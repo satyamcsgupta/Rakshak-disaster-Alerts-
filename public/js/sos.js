@@ -97,12 +97,12 @@ document.addEventListener('DOMContentLoaded', () => {
         actionsHtml = `<button class="btn btn-success btn-small w-full action-btn resolve-btn" data-id="${req._id}">Mark Resolved</button>`;
       }
 
-      const mapLink = req.latitude && req.longitude
+      const mapLink = req.latitude && req.longitude && !req.usedFallback
         ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${req.latitude},${req.longitude}" target="_blank" class="btn btn-secondary btn-small w-full" style="grid-column: 1 / -1;">🗺️ Google Maps Directions</a>`
         : '';
         
       let distanceHtml = '';
-      if (userLocation && req.latitude && req.longitude) {
+      if (userLocation && req.latitude && req.longitude && !req.usedFallback) {
         const dist = calculateDistance(userLocation.lat, userLocation.lng, req.latitude, req.longitude);
         if (dist < 0.05) {
           distanceHtml = `<div style="font-size: 0.85rem; color: #10b981; margin-top: 5px; font-weight: 600;">📍 You and the victim are at the exact same position</div>`;
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      const fallbackBadge = req.usedFallback ? `<div style="font-size: 0.75rem; color: #f59e0b; margin-top: 5px;">⚠️ Location approximate (State Center)</div>` : '';
+      const fallbackBadge = req.usedFallback ? `<div style="font-size: 0.75rem; color: #f59e0b; margin-top: 5px;">⚠️ Exact GPS not available. Map shows approximate state area.</div>` : '';
       const accuracyBadge = !req.usedFallback && req.locationSource === 'gps'
         ? `<div style="font-size: 0.75rem; color: #10b981; margin-top: 5px;">GPS exact${req.locationAccuracy ? ` (~${Math.round(req.locationAccuracy)}m)` : ''}</div>`
         : (!req.usedFallback && req.locationSource === 'ip'

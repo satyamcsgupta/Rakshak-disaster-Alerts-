@@ -15,6 +15,14 @@ const ownsRequest = (sos, user) => (
   !!(sos && user && sos.user && sos.user.toString() === user.id.toString())
 );
 
+const hasGpsCoordinates = (request) => (
+  request.locationSource === 'gps'
+  && request.latitude !== null
+  && request.latitude !== undefined
+  && request.longitude !== null
+  && request.longitude !== undefined
+);
+
 exports.createSOS = async (req, res) => {
   const {
     userName,
@@ -64,8 +72,9 @@ exports.adminSOSList = async (req, res) => {
     states,
     sosMapData: requests.map((request) => {
       const fallbackCoordinates = stateCoordinates[request.state] || null;
-      const latitude = request.latitude ?? fallbackCoordinates?.latitude ?? null;
-      const longitude = request.longitude ?? fallbackCoordinates?.longitude ?? null;
+      const hasExactLocation = hasGpsCoordinates(request);
+      const latitude = hasExactLocation ? request.latitude : fallbackCoordinates?.latitude ?? null;
+      const longitude = hasExactLocation ? request.longitude : fallbackCoordinates?.longitude ?? null;
 
       if (latitude === null || longitude === null) return null;
 
@@ -79,8 +88,8 @@ exports.adminSOSList = async (req, res) => {
         longitude,
         locationAccuracy: request.locationAccuracy,
         locationSource: request.locationSource || 'unavailable',
-        usedFallback: request.latitude === null || request.longitude === null,
-        directionsUrl: `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
+        usedFallback: !hasExactLocation,
+        directionsUrl: hasExactLocation ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}` : ''
       };
     }).filter(Boolean)
   });
@@ -120,13 +129,15 @@ exports.getNearbyRequests = async (req, res) => {
     requests = requests.map(req => {
       const doc = req.toObject();
       doc.isOwner = !!(user && doc.user && doc.user.toString() === user.id.toString());
-      if (doc.latitude === null || doc.latitude === undefined || doc.longitude === null || doc.longitude === undefined) {
+      if (doc.locationSource !== 'gps' || doc.latitude === null || doc.latitude === undefined || doc.longitude === null || doc.longitude === undefined) {
         const fallback = stateCoordinates[doc.state];
         if (fallback) {
           doc.latitude = fallback.latitude;
           doc.longitude = fallback.longitude;
           doc.usedFallback = true;
         }
+      } else {
+        doc.usedFallback = false;
       }
       return doc;
     });
