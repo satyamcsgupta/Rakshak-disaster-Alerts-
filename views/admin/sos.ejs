@@ -63,6 +63,7 @@
             <th>State</th>
             <th>Message</th>
             <th>Status</th>
+            <th>Verification</th>
             <th>Coordinates</th>
             <th>Time</th>
           </tr>
@@ -80,6 +81,20 @@
                       <option value="<%= status %>" <%= request.status === status ? 'selected' : '' %>><%= status %></option>
                     <% }) %>
                   </select>
+                </form>
+              </td>
+              <td>
+                <form action="/admin/sos/<%= request._id %>/verification" method="POST" class="verification-form">
+                  <select name="verificationStatus">
+                    <% ['Unverified', 'Verified', 'Needs Review', 'False Alarm'].forEach((status) => { %>
+                      <option value="<%= status %>" <%= (request.verificationStatus || 'Unverified') === status ? 'selected' : '' %>><%= status %></option>
+                    <% }) %>
+                  </select>
+                  <input type="text" name="adminNote" value="<%= request.adminNote || '' %>" placeholder="Admin note">
+                  <button class="btn btn-secondary btn-small" type="submit">Save</button>
+                  <% if (request.verifiedAt) { %>
+                    <span class="muted">Updated <%= request.verifiedAt.toLocaleString() %></span>
+                  <% } %>
                 </form>
               </td>
               <td>

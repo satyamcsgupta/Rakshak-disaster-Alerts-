@@ -70,6 +70,25 @@ const sosSchema = new mongoose.Schema({
   responderName: {
     type: String,
     default: ''
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['Unverified', 'Verified', 'Needs Review', 'False Alarm'],
+    default: 'Unverified'
+  },
+  verifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  verifiedAt: {
+    type: Date,
+    default: null
+  },
+  adminNote: {
+    type: String,
+    trim: true,
+    default: ''
   }
 }, {
   timestamps: true

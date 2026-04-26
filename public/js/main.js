@@ -613,7 +613,7 @@ const setupAdminSosMap = (mapEl) => {
         ? `<br><a href="${escapeHtml(m.directionsUrl)}" target="_blank" rel="noopener">Open directions</a>`
         : '';
 
-      marker.bindPopup(`<strong>${escapeHtml(m.userName)}</strong><br>${escapeHtml(m.status)}<br>${escapeHtml(m.distressMessage)}<br>${escapeHtml(locationLabel)}${directionsLink}`);
+      marker.bindPopup(`<strong>${escapeHtml(m.userName)}</strong><br>${escapeHtml(m.status)}<br>${escapeHtml(m.distressMessage)}<br>Verification: ${escapeHtml(m.verificationStatus || 'Unverified')}<br>${escapeHtml(locationLabel)}${directionsLink}`);
       markersLayer.addLayer(marker);
       bounds.extend(latLng);
     }

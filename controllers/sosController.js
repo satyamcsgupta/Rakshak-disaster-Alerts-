@@ -92,6 +92,8 @@ exports.adminSOSList = async (req, res) => {
         longitude,
         locationAccuracy: request.locationAccuracy,
         locationSource: request.locationSource || 'unavailable',
+        verificationStatus: request.verificationStatus || 'Unverified',
+        adminNote: request.adminNote || '',
         usedFallback: !hasExactLocation,
         directionsUrl: hasExactLocation ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}` : ''
       };
@@ -102,6 +104,22 @@ exports.adminSOSList = async (req, res) => {
 exports.updateSOSStatus = async (req, res) => {
   await SOS.findByIdAndUpdate(req.params.id, {
     status: req.body.status
+  }, { runValidators: true });
+
+  res.redirect('/admin/sos');
+};
+
+exports.updateSOSVerification = async (req, res) => {
+  const allowedStatuses = ['Unverified', 'Verified', 'Needs Review', 'False Alarm'];
+  const verificationStatus = allowedStatuses.includes(req.body.verificationStatus)
+    ? req.body.verificationStatus
+    : 'Unverified';
+
+  await SOS.findByIdAndUpdate(req.params.id, {
+    verificationStatus,
+    adminNote: req.body.adminNote || '',
+    verifiedBy: req.session.user.id,
+    verifiedAt: new Date()
   }, { runValidators: true });
 
   res.redirect('/admin/sos');
@@ -143,6 +161,7 @@ exports.getNearbyRequests = async (req, res) => {
       } else {
         doc.usedFallback = false;
       }
+      doc.verificationStatus = doc.verificationStatus || 'Unverified';
       return doc;
     });
 

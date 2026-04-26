@@ -2374,3 +2374,42 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+.prototype-disclaimer {
+  max-width: 760px;
+  margin: 10px auto 0;
+  color: #b45309;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.verification-form {
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.verification-form input,
+.verification-form select {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.live-status {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.live-status[data-type="success"] {
+  color: var(--success);
+}
+
+.live-status[data-type="warning"] {
+  color: var(--warning);
+}
+
+.live-status[data-type="error"] {
+  color: var(--danger);
+}
+

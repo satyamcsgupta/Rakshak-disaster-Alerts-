@@ -2,12 +2,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const sosList = document.getElementById('sosList');
   const statusFilter = document.getElementById('statusFilter');
   const refreshBtn = document.getElementById('refreshBtn');
+  const enableNotificationsBtn = document.getElementById('enableNotificationsBtn');
+  const liveStatus = document.getElementById('liveStatus');
   
   let map, markersLayer, currentRequests = [];
   let markerRefs = {};
   let userLocation = null;
   let activeRouteLayer = null;
   let userMarkerLayer = null;
+  let knownRequestIds = new Set();
+  let hasLoadedOnce = false;
+  let livePollTimer = null;
 
   function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; // Radius of the earth in km
@@ -29,6 +34,32 @@ document.addEventListener('DOMContentLoaded', () => {
       '"': '&quot;',
       "'": '&#39;'
     }[char]));
+  }
+
+  function setLiveStatus(message, type = 'info') {
+    if (!liveStatus) return;
+    liveStatus.textContent = message;
+    liveStatus.dataset.type = type;
+  }
+
+  function canNotify() {
+    return 'Notification' in window && Notification.permission === 'granted';
+  }
+
+  function notifyNewRequests(requests) {
+    if (!hasLoadedOnce) return;
+
+    requests.forEach((request) => {
+      const id = String(request._id);
+      if (knownRequestIds.has(id) || request.isOwner || request.status !== 'Pending') return;
+      knownRequestIds.add(id);
+
+      if (canNotify()) {
+        new Notification('New SOS nearby', {
+          body: `${request.userName || 'Someone'}: ${request.distressMessage || 'Needs help'}`
+        });
+      }
+    });
   }
   
   // Initialize Leaflet Map
@@ -52,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // (This would normally use the stateCoordinates from the backend)
   }
 
-  function fetchRequests() {
+  function fetchRequests({ notify = false } = {}) {
     sosList.innerHTML = '<div class="list-loading">Loading requests...</div>';
     const status = statusFilter.value;
     
@@ -61,12 +92,17 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(data => {
         if (data.success) {
           currentRequests = data.requests;
+          if (notify) notifyNewRequests(currentRequests);
+          currentRequests.forEach((request) => knownRequestIds.add(String(request._id)));
+          hasLoadedOnce = true;
           renderRequests(currentRequests);
           updateMap(currentRequests);
+          setLiveStatus(`Live SOS updates active. Last checked ${new Date().toLocaleTimeString()}.`, 'success');
         }
       })
       .catch(err => {
         sosList.innerHTML = '<div class="error-box">Failed to load requests.</div>';
+        setLiveStatus('Connection issue. Retrying live SOS updates...', 'error');
       });
   }
 
@@ -128,6 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="distress-msg">"${escapeHtml(req.distressMessage)}"</p>
           <div class="contact-info">
             <strong>Contact:</strong> ${escapeHtml(req.contactNumber || 'N/A')}
+          </div>
+          <div class="contact-info">
+            <strong>Verification:</strong> ${escapeHtml(req.verificationStatus || 'Unverified')}
           </div>
           ${distanceHtml}
           ${fallbackBadge}
@@ -266,7 +305,33 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   statusFilter.addEventListener('change', fetchRequests);
-  refreshBtn.addEventListener('click', fetchRequests);
+  refreshBtn.addEventListener('click', () => fetchRequests());
+
+  if (enableNotificationsBtn && 'Notification' in window) {
+    enableNotificationsBtn.addEventListener('click', () => {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          setLiveStatus('Notifications enabled for nearby SOS.', 'success');
+          enableNotificationsBtn.textContent = 'Notifications Enabled';
+          enableNotificationsBtn.disabled = true;
+        } else {
+          setLiveStatus('Notifications blocked. You can still refresh/poll nearby SOS.', 'warning');
+        }
+      });
+    });
+  } else if (enableNotificationsBtn) {
+    enableNotificationsBtn.disabled = true;
+    enableNotificationsBtn.textContent = 'Notifications Unavailable';
+  }
+
+  window.addEventListener('online', () => {
+    setLiveStatus('Back online. Refreshing SOS requests...', 'success');
+    fetchRequests({ notify: true });
+  });
+
+  window.addEventListener('offline', () => {
+    setLiveStatus('Offline. Map tiles and live SOS updates may not load.', 'error');
+  });
 
   // Init
   initMap();
@@ -292,4 +357,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fetchRequests();
+  livePollTimer = setInterval(() => {
+    if (!document.hidden && navigator.onLine) {
+      fetchRequests({ notify: true });
+    }
+  }, 30000);
 });

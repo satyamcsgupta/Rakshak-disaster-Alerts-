@@ -1,8 +1,8 @@
 const CACHE_NAME = 'rakshak-v8';
 const ASSETS_TO_CACHE = [
   '/',
-  '/css/style.css?v=4',
-  '/js/main.js?v=8'
+  '/css/style.css?v=5',
+  '/js/main.js?v=9'
 ];
 
 self.addEventListener('install', (event) => {
