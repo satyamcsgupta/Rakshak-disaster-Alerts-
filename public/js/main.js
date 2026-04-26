@@ -78,6 +78,7 @@ const requestAndCacheUserLocation = ({ showStatus = false } = {}) => new Promise
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       saveLastKnownLocation(pos.coords, 'gps');
+      updateSosLocationStatus(`GPS ready, accuracy about ${Math.round(pos.coords.accuracy || 0)}m.`, 'success');
       if (showStatus) {
         showToast(`Location ready within about ${Math.round(pos.coords.accuracy || 0)} meters.`, 'success');
       }
@@ -104,6 +105,13 @@ const getLocationPermissionState = async () => {
   } catch (error) {
     return 'unknown';
   }
+};
+
+const updateSosLocationStatus = (message, type = 'info') => {
+  const status = document.getElementById('sosLocationStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.type = type;
 };
 
 /* ── 1. Accessibility & Dark Mode ── */
@@ -617,6 +625,16 @@ const init = () => {
 
   const sosForm = document.getElementById('sosForm');
   if (sosForm) {
+    getLocationPermissionState().then((state) => {
+      if (!canUsePreciseLocation()) {
+        updateSosLocationStatus('Exact GPS needs HTTPS. Use the Render HTTPS URL.', 'warning');
+      } else if (state === 'denied') {
+        updateSosLocationStatus('Location blocked. Enable it in browser site settings.', 'error');
+      } else {
+        updateSosLocationStatus('GPS permission will be requested for exact SOS location.', 'info');
+      }
+    });
+
     sosForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = sosForm.querySelector('button[type="submit"]');
@@ -627,6 +645,7 @@ const init = () => {
 
       const submitWithoutExactLocation = (message) => {
         setSosLocationFields(sosForm, { source: 'unavailable' });
+        updateSosLocationStatus('SOS will be sent without exact GPS location.', 'warning');
         alert(message);
         sosForm.submit();
       };
@@ -639,9 +658,11 @@ const init = () => {
         }
 
         if (btn) btn.textContent = 'Getting location...';
+        updateSosLocationStatus('Requesting GPS location...', 'info');
         const freshLocation = await requestAndCacheUserLocation({ showStatus: true });
 
         if (freshLocation) {
+          updateSosLocationStatus(`GPS ready, accuracy about ${Math.round(freshLocation.accuracy || 0)}m.`, 'success');
           setSosLocationFields(sosForm, freshLocation);
           sosForm.submit();
           return;
@@ -663,6 +684,7 @@ const init = () => {
         }
 
         if (btn) btn.textContent = 'Getting location...';
+        updateSosLocationStatus('Getting exact GPS location...', 'info');
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             saveLastKnownLocation(pos.coords, 'gps');
@@ -672,6 +694,7 @@ const init = () => {
               accuracy: pos.coords.accuracy,
               source: 'gps'
             });
+            updateSosLocationStatus(`GPS ready, accuracy about ${Math.round(pos.coords.accuracy || 0)}m.`, 'success');
             showToast(`GPS location captured within about ${Math.round(pos.coords.accuracy || 0)} meters.`, 'success');
             sosForm.submit();
           },
@@ -682,6 +705,7 @@ const init = () => {
               setSosLocationFields(sosForm, cachedLocation);
               const useCached = confirm('Exact live GPS is not available right now. Use your recent GPS location for SOS? Press Cancel to retry location permission.');
               if (useCached) {
+                updateSosLocationStatus(`Using recent GPS, accuracy about ${Math.round(cachedLocation.accuracy || 0)}m.`, 'warning');
                 showToast('Using your recent GPS location for SOS.', 'info');
                 sosForm.submit();
               } else {
