@@ -79,11 +79,15 @@
       <input type="hidden" name="state" value="<%= alert.state %>">
       <input type="hidden" name="latitude" id="latitude">
       <input type="hidden" name="longitude" id="longitude">
+      <input type="hidden" name="locationAccuracy" id="locationAccuracy">
+      <input type="hidden" name="locationSource" id="locationSource" value="unavailable">
       <label>
         Name optional
         <input type="text" name="userName" placeholder="Your name">
       </label>
+      <button class="btn btn-secondary" type="button" id="enableSosLocationBtn">Enable Exact Location</button>
       <button class="btn btn-danger" type="submit">I am in trouble</button>
+      <p class="sos-location-status" id="sosLocationStatus">Checking GPS permission...</p>
     </form>
 
     <div class="side-section">

@@ -8,12 +8,16 @@
     <div class="weather-location"><%= selectedState %>, India</div>
     <div class="weather-temp"><%= weather.temp %>°C</div>
     <div class="weather-desc"><%= weather.desc %> · <%= weather.windSpeed %></div>
+    <div class="weather-desc">Feels like <%= weather.feelsLike %>°C · Humidity <%= weather.humidity %> · Rain <%= weather.precipitation || '--' %></div>
     <% if (weather.updatedAt) { %>
-      <div class="weather-desc">Updated <%= new Date(weather.updatedAt).toLocaleString() %></div>
+      <div class="weather-desc"><%= weather.sourceLabel || 'Weather' %> · Updated <%= new Date(weather.updatedAt).toLocaleString() %></div>
+    <% } %>
+    <% if (weather.note) { %>
+      <div class="weather-desc"><%= weather.note %></div>
     <% } %>
   </div>
   <div class="weather-status">
-    <span class="badge <%= weather.status === 'Normal' ? 'low' : (weather.status === 'Extreme Heat' ? 'high' : 'medium') %>">
+    <span class="badge <%= weather.status === 'Normal' ? 'low' : (weather.status === 'Extreme Heat' || weather.status === 'Severe Weather' || weather.status === 'Heavy Rain' ? 'high' : 'medium') %>">
       <%= weather.status %>
     </span>
   </div>
@@ -96,6 +100,31 @@
   </section>
 
   <p class="translation-note" style="margin: 0 0 24px;">If you have not selected a language, we use your browser preferences to choose the best supported regional language automatically.</p>
+
+  <section class="checkin-panel" data-checkin-state="<%= selectedState %>" data-checkin-city="<%= selectedCity || currentUser?.city || '' %>">
+    <div class="checkin-copy">
+      <p class="eyebrow">Emergency Status Check-In</p>
+      <h2>Update your safety status</h2>
+      <p class="muted">Share your latest status with family, authorities, and rescue teams. Your newest check-in replaces the old one.</p>
+      <p class="checkin-current" id="currentCheckInStatus">
+        Current status:
+        <% if (currentCheckIn) { %>
+          <strong class="<%= currentCheckIn.status === 'safe' ? 'safe' : 'need-help' %>">
+            <%= currentCheckIn.status === 'safe' ? 'Safe' : 'Need Help' %>
+          </strong>
+          · Updated <%= currentCheckIn.updatedAt.toLocaleString() %>
+        <% } else { %>
+          <strong>Not updated yet</strong>
+        <% } %>
+      </p>
+      <p class="muted checkin-admin-hint">Admin can see this under Dashboard → Check-ins.</p>
+    </div>
+    <div class="checkin-actions">
+      <button class="checkin-btn safe" type="button" data-checkin-status="safe">I AM SAFE</button>
+      <button class="checkin-btn need-help" type="button" data-checkin-status="need_help">NEED HELP</button>
+    </div>
+    <p class="checkin-status-message" id="checkInStatusMessage" aria-live="polite"></p>
+  </section>
 
   <section class="stats-grid quick-stats">
     <% summaryCards.forEach((item) => { %>

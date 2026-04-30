@@ -1,50 +1,114 @@
 <%- include('../partials/header') %>
 
-<div class="panel-header">
-  <div class="page-heading">
+<%
+  const totalSeverity = (highSeverityCount + mediumSeverityCount + lowSeverityCount) || 1;
+  const highShare = Math.round((highSeverityCount / totalSeverity) * 100);
+  const pendingShare = sosCount ? Math.round((pendingSosCount / sosCount) * 100) : 0;
+%>
+
+<section class="admin-hero">
+  <div>
     <p class="eyebrow">Overview</p>
     <h1>Command Center</h1>
+    <p class="muted">Monitor alerts, SOS verification, and emergency resources from one control surface.</p>
   </div>
-  <div class="button-row">
+  <div class="admin-hero-actions">
+    <a href="/admin/sos" class="btn btn-secondary">Review SOS</a>
     <a href="/admin/alerts/new" class="btn btn-primary">Create New Alert</a>
   </div>
-</div>
+</section>
+
+<nav class="admin-mobile-command-strip" aria-label="Admin dashboard shortcuts">
+  <a href="#admin-overview">Overview</a>
+  <a href="#admin-actions">Actions</a>
+  <a href="#admin-checkins">Check-ins</a>
+</nav>
+
+<section class="admin-health-strip" id="admin-overview">
+  <div>
+    <span>Pending SOS</span>
+    <strong><%= pendingSosCount %></strong>
+    <small><%= pendingShare %>% of all SOS</small>
+  </div>
+  <div>
+    <span>Resolved SOS</span>
+    <strong><%= resolvedSosCount %></strong>
+    <small>Closed response records</small>
+  </div>
+  <div>
+    <span>High Severity Share</span>
+    <strong><%= highShare %>%</strong>
+    <small>Of current alert mix</small>
+  </div>
+  <div>
+    <span>Users Need Help</span>
+    <strong><%= usersNeedHelp %></strong>
+    <small>Latest emergency check-ins</small>
+  </div>
+</section>
 
 <!-- Premium Stat Cards -->
 <div class="admin-stats-grid">
   <div class="admin-stat-card card-alerts">
-    <span class="stat-icon">📢</span>
+    <span class="stat-icon">A</span>
     <span class="stat-label">Total Alerts</span>
     <div class="stat-value"><%= alertCount %></div>
+    <span class="stat-meta">Published warning records</span>
   </div>
   <div class="admin-stat-card card-sos">
-    <span class="stat-icon">🆘</span>
+    <span class="stat-icon">S</span>
     <span class="stat-label">Distress Requests</span>
     <div class="stat-value"><%= sosCount %></div>
+    <span class="stat-meta">Total SOS submissions</span>
   </div>
   <div class="admin-stat-card card-high">
-    <span class="stat-icon">⚠️</span>
+    <span class="stat-icon">H</span>
     <span class="stat-label">High Severity</span>
     <div class="stat-value"><%= highSeverityCount %></div>
+    <span class="stat-meta">Requires active monitoring</span>
   </div>
   <div class="admin-stat-card card-new-sos">
-    <span class="stat-icon">🔔</span>
+    <span class="stat-icon">P</span>
     <span class="stat-label">Pending SOS</span>
     <div class="stat-value"><%= pendingSosCount %></div>
+    <span class="stat-meta">Needs review or response</span>
+  </div>
+  <div class="admin-stat-card card-resolved">
+    <span class="stat-icon">OK</span>
+    <span class="stat-label">Total Safe Users</span>
+    <div class="stat-value"><%= totalSafeUsers %></div>
+    <span class="stat-meta">Latest status marked safe</span>
+  </div>
+  <div class="admin-stat-card card-sos">
+    <span class="stat-icon">!</span>
+    <span class="stat-label">Users Need Help</span>
+    <div class="stat-value"><%= usersNeedHelp %></div>
+    <span class="stat-meta">Needs urgent support</span>
+  </div>
+  <div class="admin-stat-card card-high">
+    <span class="stat-icon">PR</span>
+    <span class="stat-label">Pending Responses</span>
+    <div class="stat-value"><%= pendingResponses %></div>
+    <span class="stat-meta">Need help check-ins open</span>
   </div>
 </div>
 
 <!-- Severity Distribution & Quick Actions -->
-<div class="details-layout">
-  <div class="content-panel">
+<div class="admin-dashboard-grid">
+  <div class="content-panel admin-main-panel">
     <div class="severity-bar-wrap">
-      <h3>Severity Distribution</h3>
       <% 
-        const total = (highSeverityCount + mediumSeverityCount + lowSeverityCount) || 1;
-        const pHigh = (highSeverityCount / total) * 100;
-        const pMed = (mediumSeverityCount / total) * 100;
-        const pLow = (lowSeverityCount / total) * 100;
+        const pHigh = (highSeverityCount / totalSeverity) * 100;
+        const pMed = (mediumSeverityCount / totalSeverity) * 100;
+        const pLow = (lowSeverityCount / totalSeverity) * 100;
       %>
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Risk mix</p>
+          <h2>Severity Distribution</h2>
+        </div>
+        <span class="map-count-pill"><%= highSeverityCount + mediumSeverityCount + lowSeverityCount %> categorized</span>
+      </div>
       <div class="severity-bar">
         <span class="bar-high" style="width: <%= pHigh %>%"><%= highSeverityCount > 0 ? 'High' : '' %></span>
         <span class="bar-medium" style="width: <%= pMed %>%"><%= mediumSeverityCount > 0 ? 'Med' : '' %></span>
@@ -58,7 +122,10 @@
     </div>
 
     <div class="panel-header">
-      <h2>Recent Alerts</h2>
+      <div>
+        <p class="eyebrow">Latest warnings</p>
+        <h2>Recent Alerts</h2>
+      </div>
       <a href="/admin/alerts" class="small-link">View All</a>
     </div>
     
@@ -90,32 +157,37 @@
     </div>
   </div>
 
-  <div class="side-panel">
-    <h3>Quick Actions</h3>
-    <div class="stacked-form">
+  <aside class="side-panel admin-side-panel" id="admin-actions">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">Operations</p>
+        <h2>Quick Actions</h2>
+      </div>
+    </div>
+    <div class="admin-action-list">
       <a href="/admin/alerts/new" class="quick-action-card">
-        <span class="quick-action-icon">➕</span>
+        <span class="quick-action-icon">+</span>
         <div class="quick-action-text">
           <h3>Issue Warning</h3>
           <p>Create a new disaster alert</p>
         </div>
       </a>
       <a href="/admin/sos" class="quick-action-card">
-        <span class="quick-action-icon">🚒</span>
+        <span class="quick-action-icon">SOS</span>
         <div class="quick-action-text">
-          <h3>Manage SOS</h3>
+          <h3>Verify SOS</h3>
           <p><%= pendingSosCount %> requests pending</p>
         </div>
       </a>
       <a href="/admin/alerts" class="quick-action-card">
-        <span class="quick-action-icon">📂</span>
+        <span class="quick-action-icon">A</span>
         <div class="quick-action-text">
-          <h3>Archive</h3>
+          <h3>Alert Archive</h3>
           <p>Manage existing alerts</p>
         </div>
       </a>
       <a href="/admin/resources" class="quick-action-card">
-        <span class="quick-action-icon">🏥</span>
+        <span class="quick-action-icon">R</span>
         <div class="quick-action-text">
           <h3>Safe Zones</h3>
           <p>Manage Shelters & Hospitals</p>
@@ -124,14 +196,19 @@
     </div>
 
     <div class="side-section">
-      <h3>Latest Activity</h3>
-      <div class="helpline-list">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Live queue</p>
+          <h2>Latest SOS Activity</h2>
+        </div>
+      </div>
+      <div class="admin-activity-list">
         <% if (latestSos && latestSos.length > 0) { %>
           <% latestSos.forEach((sos) => { %>
-            <div class="helpline-item">
+            <div class="admin-activity-item">
               <div>
                 <strong><%= sos.userName %></strong>
-                <p class="muted" style="margin:0; font-size: 0.8rem;"><%= sos.state %></p>
+                <p class="muted"><%= sos.state %> · <%= new Date(sos.createdAt).toLocaleString() %></p>
               </div>
               <span class="badge <%= sos.status === 'Resolved' ? 'low' : (sos.status === 'Pending' ? 'high' : 'medium') %>">
                 <%= sos.status %>
@@ -143,7 +220,71 @@
         <% } %>
       </div>
     </div>
-  </div>
+  </aside>
 </div>
+
+<section class="content-panel map-panel checkin-admin-panel" id="admin-checkins">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Safe / Unsafe Check-Ins</p>
+      <h2>Latest User Emergency Status</h2>
+    </div>
+    <span class="map-count-pill"><%= latestCheckIns.length %> latest records</span>
+  </div>
+  <div class="map-shell">
+    <div class="map-frame">
+      <div
+        id="checkInMap"
+        class="map-canvas"
+        data-markers="<%= JSON.stringify(checkInMapData || []) %>"
+      ></div>
+      <% if ((checkInMapData || []).length === 0) { %>
+        <div class="map-empty-state">
+          <strong>No check-in locations yet</strong>
+          <span>Markers appear after users share Safe or Need Help with GPS permission.</span>
+        </div>
+      <% } %>
+    </div>
+    <aside class="map-sidebar">
+      <div class="map-legend">
+        <h3>Status Legend</h3>
+        <div class="legend-list">
+          <span><i class="legend-dot checkin-safe"></i>Safe</span>
+          <span><i class="legend-dot checkin-help"></i>Need help</span>
+        </div>
+      </div>
+      <div class="table-wrap checkin-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Location</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (latestCheckIns.length > 0) { %>
+              <% latestCheckIns.forEach((checkIn) => { %>
+                <tr>
+                  <td><strong><%= checkIn.userName %></strong></td>
+                  <td>
+                    <span class="badge <%= checkIn.status === 'safe' ? 'low' : 'high' %>">
+                      <%= checkIn.status === 'safe' ? 'Safe' : 'Need Help' %>
+                    </span>
+                  </td>
+                  <td><%= [checkIn.city, checkIn.state].filter(Boolean).join(', ') || 'Unknown' %></td>
+                  <td><%= checkIn.updatedAt.toLocaleString() %></td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr><td colspan="4">No check-ins yet.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </aside>
+  </div>
+</section>
 
 <%- include('../partials/footer') %>

@@ -1,5 +1,6 @@
 const Alert = require('../models/Alert');
 const SOS = require('../models/SOS');
+const CheckInStatus = require('../models/CheckInStatus');
 const { fetchOfficialAlerts, getFeedUrl } = require('../services/officialAlertService');
 const { translateOfficialAlerts, translateText } = require('../services/translationService');
 const { buildGuidance } = require('../services/alertGuidanceService');
@@ -58,7 +59,21 @@ exports.homePage = (req, res) => {
 };
 
 exports.adminDashboard = async (req, res) => {
-  const [alertCount, sosCount, latestAlerts, highSeverityCount, mediumSeverityCount, lowSeverityCount, pendingSosCount, resolvedSosCount, latestSos] = await Promise.all([
+  const [
+    alertCount,
+    sosCount,
+    latestAlerts,
+    highSeverityCount,
+    mediumSeverityCount,
+    lowSeverityCount,
+    pendingSosCount,
+    resolvedSosCount,
+    latestSos,
+    totalSafeUsers,
+    usersNeedHelp,
+    latestCheckIns,
+    checkInMapRecords
+  ] = await Promise.all([
     Alert.countDocuments(),
     SOS.countDocuments(),
     Alert.find().sort({ createdAt: -1 }).limit(5),
@@ -67,7 +82,14 @@ exports.adminDashboard = async (req, res) => {
     Alert.countDocuments({ severity: 'Low' }),
     SOS.countDocuments({ status: 'Pending' }),
     SOS.countDocuments({ status: 'Resolved' }),
-    SOS.find().sort({ createdAt: -1 }).limit(3)
+    SOS.find().sort({ createdAt: -1 }).limit(3),
+    CheckInStatus.countDocuments({ status: 'safe' }),
+    CheckInStatus.countDocuments({ status: 'need_help' }),
+    CheckInStatus.find().sort({ updatedAt: -1 }).limit(8),
+    CheckInStatus.find({
+      latitude: { $ne: null },
+      longitude: { $ne: null }
+    }).sort({ updatedAt: -1 }).limit(100)
   ]);
 
   res.render('admin/dashboard', {
@@ -80,7 +102,21 @@ exports.adminDashboard = async (req, res) => {
     lowSeverityCount,
     pendingSosCount,
     resolvedSosCount,
-    latestSos
+    latestSos,
+    totalSafeUsers,
+    usersNeedHelp,
+    pendingResponses: usersNeedHelp,
+    latestCheckIns,
+    checkInMapData: checkInMapRecords.map((record) => ({
+      userName: record.userName,
+      status: record.status,
+      latitude: record.latitude,
+      longitude: record.longitude,
+      city: record.city,
+      state: record.state,
+      updatedAt: record.updatedAt.toLocaleString(),
+      directionsUrl: `https://www.google.com/maps/dir/?api=1&destination=${record.latitude},${record.longitude}`
+    }))
   });
 };
 
@@ -216,11 +252,12 @@ exports.userAlertList = async (req, res) => {
     // resourceQuery.city = selectedCity;
   }
 
-  const [alerts, rawOfficialAlerts, resources, weather] = await Promise.all([
+  const [alerts, rawOfficialAlerts, resources, weather, currentCheckIn] = await Promise.all([
     Alert.find(alertQuery).sort({ createdAt: -1 }),
     fetchOfficialAlerts(selectedState),
     require('../models/Resource').find(resourceQuery),
-    require('../services/weatherService').getWeatherData(selectedState)
+    require('../services/weatherService').getWeatherData(selectedState),
+    CheckInStatus.findOne({ userId: req.session.user.id })
   ]);
   const officialAlerts = await Promise.all((await translateOfficialAlerts(rawOfficialAlerts, selectedLanguage)).map(async (alert) => ({
     ...alert,
@@ -267,6 +304,7 @@ exports.userAlertList = async (req, res) => {
     selectedLanguage,
     officialAlerts,
     weather,
+    currentCheckIn,
     officialFeedUrl: getFeedUrl(selectedState),
     alerts: localizedAlerts,
     popupAlert,

@@ -12,5 +12,6 @@ router.get('/api/stream', requireAuth, sosController.streamSOSUpdates);
 router.post('/:id/accept', requireAuth, sosController.acceptRequest);
 router.post('/:id/resolve', requireAuth, sosController.resolveRequest);
 router.post('/:id/cancel', requireAuth, sosController.cancelRequest);
+router.post('/:id/location', requireAuth, sosController.updateSOSLocation);
 
 module.exports = router;

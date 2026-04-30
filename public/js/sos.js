@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let userLocation = null;
   let activeRouteLayer = null;
   let userMarkerLayer = null;
+  let accuracyLayer = null;
   let knownRequestIds = new Set();
   let hasLoadedOnce = false;
   let livePollTimer = null;
@@ -53,50 +54,129 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function openRouteFromCurrentLocation(request, button) {
+  function clearActiveRoute() {
+    if (activeRouteLayer) {
+      map.removeLayer(activeRouteLayer);
+      activeRouteLayer = null;
+    }
+  }
+
+  function setMapOverlay(message) {
+    const overlay = document.getElementById('mapOverlay');
+    if (!overlay) return;
+    overlay.textContent = message;
+    overlay.classList.remove('is-hidden');
+  }
+
+  function addOrUpdateUserMarker(location) {
+    if (!map || !location) return;
+
+    const latLng = [location.lat, location.lng];
+    const userIcon = L.divIcon({
+      html: '<div class="nearby-user-marker"></div>',
+      className: '',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+
+    if (userMarkerLayer) {
+      userMarkerLayer.setLatLng(latLng);
+      return;
+    }
+
+    userMarkerLayer = L.marker(latLng, { icon: userIcon })
+      .bindPopup('<strong>Your Location</strong>')
+      .addTo(map);
+  }
+
+  function drawRouteOnMap(origin, request, routeCoordinates = null) {
+    clearActiveRoute();
+
+    const destination = [Number(request.latitude), Number(request.longitude)];
+    const originLatLng = [Number(origin.latitude), Number(origin.longitude)];
+    const coordinates = routeCoordinates?.length
+      ? routeCoordinates.map(([lng, lat]) => [lat, lng])
+      : [originLatLng, destination];
+
+    activeRouteLayer = L.featureGroup([
+      L.polyline(coordinates, {
+        color: '#f97316',
+        weight: 6,
+        opacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }),
+      L.polyline(coordinates, {
+        color: '#ffffff',
+        weight: 2,
+        opacity: 0.85,
+        dashArray: '8, 12',
+        lineCap: 'round'
+      })
+    ]).addTo(map);
+
+    addOrUpdateUserMarker({ lat: origin.latitude, lng: origin.longitude });
+    map.fitBounds(activeRouteLayer.getBounds(), { padding: [42, 42], maxZoom: 15 });
+  }
+
+  async function openRouteFromCurrentLocation(request, button) {
     if (!request || !request.latitude || !request.longitude || request.usedFallback) {
       alert('Exact victim GPS location is not available for route navigation.');
       return;
     }
 
-    const routeWindow = window.open('', '_blank');
     const oldLabel = button ? button.textContent : '';
     if (button) {
       button.disabled = true;
       button.textContent = 'Getting your location...';
     }
 
-    getCurrentResponderLocation()
-      .then((origin) => {
-        userLocation = { lat: origin.latitude, lng: origin.longitude };
-        const url = new URL('https://www.google.com/maps/dir/');
-        url.searchParams.set('api', '1');
-        url.searchParams.set('origin', `${origin.latitude},${origin.longitude}`);
-        url.searchParams.set('destination', `${request.latitude},${request.longitude}`);
-        url.searchParams.set('travelmode', 'driving');
+    try {
+      const origin = await getCurrentResponderLocation();
+      userLocation = { lat: origin.latitude, lng: origin.longitude };
+      addOrUpdateUserMarker(userLocation);
 
-        if (routeWindow) {
-          routeWindow.location.href = url.toString();
-        } else {
-          window.location.href = url.toString();
-        }
-      })
-      .catch((error) => {
-        console.warn('Responder route location failed:', error);
-        const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${request.latitude},${request.longitude}&travelmode=driving`;
-        alert('Could not get your exact current location. Opening route with Google Maps current-location fallback.');
-        if (routeWindow) {
-          routeWindow.location.href = fallbackUrl;
-        } else {
-          window.location.href = fallbackUrl;
-        }
-      })
-      .finally(() => {
-        if (button) {
-          button.disabled = false;
-          button.textContent = oldLabel || 'Get Route';
-        }
-      });
+      if (button) button.textContent = 'Drawing route...';
+      setMapOverlay('Drawing route on this map...');
+
+      const routeUrl = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${request.longitude},${request.latitude}?overview=full&geometries=geojson`;
+      const response = await fetch(routeUrl);
+      const data = await response.json();
+      const route = data?.routes?.[0];
+
+      if (!response.ok || !route?.geometry?.coordinates?.length) {
+        throw new Error('Routing service did not return a route.');
+      }
+
+      drawRouteOnMap(origin, request, route.geometry.coordinates);
+      const distanceKm = route.distance ? (route.distance / 1000).toFixed(1) : null;
+      const durationMin = route.duration ? Math.round(route.duration / 60) : null;
+      const routeSummary = [
+        distanceKm ? `${distanceKm} km` : null,
+        durationMin ? `${durationMin} min` : null
+      ].filter(Boolean).join(' • ');
+
+      setMapOverlay(routeSummary ? `Route shown here: ${routeSummary}` : 'Route shown on this map.');
+      focusRequestOnMap(request._id, { keepRoute: true, zoomToMarker: false });
+    } catch (error) {
+      console.warn('Responder route failed:', error);
+
+      if (userLocation) {
+        drawRouteOnMap(
+          { latitude: userLocation.lat, longitude: userLocation.lng },
+          request
+        );
+        setMapOverlay('Route service unavailable. Showing direct line on this map.');
+      } else {
+        alert('Could not get your current location. Allow location access to draw the route on this map.');
+        setMapOverlay('Allow location access, then tap Get Route again.');
+      }
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = oldLabel || 'Get Route';
+      }
+    }
   }
 
   function escapeHtml(value) {
@@ -168,17 +248,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize Leaflet Map
   function initMap() {
     map = L.map('sosMap').setView([20.5937, 78.9629], 5); // Default India center
-    
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+
+    const street = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      maxZoom: 19
-    }).addTo(map);
+      subdomains: 'abcd',
+      maxZoom: 19,
+      detectRetina: true
+    });
+
+    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri',
+      maxZoom: 19,
+      detectRetina: true
+    });
+
+    L.control.layers({
+      "Street View": street,
+      "Satellite": satellite
+    }, {}, { collapsed: false, position: 'topright' }).addTo(map);
+    street.addTo(map);
+
+    L.control.scale({ metric: true, imperial: false, position: 'bottomleft' }).addTo(map);
 
     markersLayer = L.markerClusterGroup({
       chunkedLoading: true,
       maxClusterRadius: 50
     });
     map.addLayer(markersLayer);
+
+    accuracyLayer = L.featureGroup().addTo(map);
     setTimeout(() => map.invalidateSize(), 150);
     setTimeout(() => map.invalidateSize(), 600);
     
@@ -355,22 +453,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function focusRequestOnMap(id) {
+  function focusRequestOnMap(id, options = {}) {
+    const { keepRoute = false, zoomToMarker = true } = options;
     const marker = markerRefs[id];
     const reqData = currentRequests.find(r => r._id === id);
 
     if (marker && reqData && reqData.latitude && reqData.longitude) {
       markersLayer.zoomToShowLayer(marker, () => {
-        map.setView([reqData.latitude, reqData.longitude], reqData.usedFallback ? 8 : 15);
+        if (zoomToMarker) {
+          map.setView([reqData.latitude, reqData.longitude], reqData.usedFallback ? 8 : 15);
+        }
         marker.openPopup();
       });
 
-      if (activeRouteLayer) {
-        map.removeLayer(activeRouteLayer);
-        activeRouteLayer = null;
-      }
+      if (!keepRoute) clearActiveRoute();
 
-      if (userLocation && !reqData.usedFallback) {
+      if (userLocation && !reqData.usedFallback && !keepRoute) {
         activeRouteLayer = L.polyline([
           [userLocation.lat, userLocation.lng],
           [reqData.latitude, reqData.longitude]
@@ -400,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
     map.removeLayer(markersLayer);
     markersLayer.clearLayers();
     markerRefs = {};
+    if (accuracyLayer) accuracyLayer.clearLayers();
 
     const bounds = L.latLngBounds();
     let hasValidCoords = false;
@@ -409,10 +508,9 @@ document.addEventListener('DOMContentLoaded', () => {
         hasValidCoords = true;
         const latLng = [req.latitude, req.longitude];
         
-        const isPending = req.status === 'Pending';
-        const inProgress = req.status === 'In Progress';
-        
-        const color = req.usedFallback ? '#64748b' : '#ef4444';
+        const color = req.usedFallback
+          ? '#64748b'
+          : (req.status === 'Resolved' ? '#10b981' : (req.status === 'In Progress' ? '#f59e0b' : '#ef4444'));
         
         const markerHtml = `
           <div class="custom-marker" style="background-color: ${color}; border: 2px solid white; border-radius: 50%; width: 20px; height: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>
@@ -426,10 +524,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const marker = L.marker(latLng, { icon });
+        const locationAge = req.locationCapturedAt
+          ? `${new Date(req.locationCapturedAt).toLocaleString()}`
+          : 'Unknown';
+
         marker.bindPopup(`
           <strong>${escapeHtml(req.userName)}</strong><br>
           Message: ${escapeHtml(req.distressMessage)}<br>
           Time: ${escapeHtml(new Date(req.createdAt).toLocaleString())}<br>
+          Location updated: ${escapeHtml(locationAge)}<br>
           Status: ${escapeHtml(req.status)}<br>
           ${req.usedFallback ? 'Approximate state location' : escapeHtml(req.locationSource === 'gps' ? `GPS location${req.locationAccuracy ? ` ~${Math.round(req.locationAccuracy)}m` : ''}` : 'Shared location')}
         `);
@@ -437,6 +540,16 @@ document.addEventListener('DOMContentLoaded', () => {
         markersLayer.addLayer(marker);
         markerRefs[req._id] = marker;
         bounds.extend(latLng);
+
+        if (!req.usedFallback && req.locationSource === 'gps' && Number(req.locationAccuracy) > 0 && accuracyLayer) {
+          const circle = L.circle(latLng, {
+            radius: Number(req.locationAccuracy),
+            color: 'rgba(239, 68, 68, 0.65)',
+            fillColor: 'rgba(239, 68, 68, 0.12)',
+            weight: 2
+          });
+          circle.addTo(accuracyLayer);
+        }
       }
     });
 
@@ -483,15 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.geolocation.getCurrentPosition(pos => {
       userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       
-      const userIcon = L.divIcon({
-        html: `<div style="background-color: #3b82f6; border: 3px solid white; border-radius: 50%; width: 16px; height: 16px; box-shadow: 0 0 10px rgba(59,130,246,0.8);"></div>`,
-        className: '',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8]
-      });
-      userMarkerLayer = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
-        .bindPopup('<strong>Your Location</strong>')
-        .addTo(map);
+      addOrUpdateUserMarker(userLocation);
 
       fetchRequests(); // Refetch to calculate and show distances
     }, err => {

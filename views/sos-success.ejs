@@ -3,6 +3,24 @@
 <section class="success-panel">
   <h1>SOS request saved</h1>
   <p>Your emergency request for <strong><%= state %></strong> has been recorded with the current date and time.</p>
+  <% if (typeof sosId !== 'undefined' && sosId) { %>
+    <div class="mini-panel" style="margin-top: 16px; text-align: left;">
+      <p class="eyebrow">Optional (recommended)</p>
+      <h2 style="margin: 0 0 10px;">Share live location</h2>
+      <p class="muted" style="margin: 0 0 12px;">
+        If you move after sending SOS, keep your GPS on so volunteers/admin can track your latest position.
+      </p>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="startLiveLocationBtn">Start Live Location</button>
+        <button class="btn btn-secondary" type="button" id="stopLiveLocationBtn" disabled>Stop</button>
+      </div>
+      <p class="live-status" id="liveLocationStatus" style="margin-top: 12px;">Live location is off.</p>
+    </div>
+    <script>
+      window.RAKSHAK_SOS_ID = "<%= sosId %>";
+    </script>
+    <script src="/js/sos-live.js?v=1"></script>
+  <% } %>
   <a class="btn btn-primary" href="/alerts?state=<%= encodeURIComponent(state) %>">Back to Alerts</a>
 </section>
 

@@ -18,6 +18,11 @@ const DARK_MODE_KEY = 'rakshakDarkMode';
 const ACCESSIBILITY_MODE_KEY = 'disasterhelpAccessibilityMode';
 const USER_LOCATION_KEY = 'rakshakLastKnownLocation';
 const LOCATION_MAX_AGE_MS = 5 * 60 * 1000;
+const SOS_READY_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
+const SOS_READY_LOCATION_MAX_ACCURACY_M = 75;
+const SOS_TARGET_ACCURACY_M = 80;
+const SOS_LOCATION_TIMEOUT_MS = 7000;
+const SOS_MIN_GPS_WAIT_MS = 1200;
 
 const stateCenters = [
   { state: 'Maharashtra', latitude: 19.75, longitude: 75.71 },
@@ -70,10 +75,13 @@ const getLastKnownLocation = () => {
   }
 };
 
-const isUsableGpsLocation = (location, maxAgeMs = LOCATION_MAX_AGE_MS) => (
+const isUsableGpsLocation = (location, maxAgeMs = LOCATION_MAX_AGE_MS, maxAccuracy = Infinity) => (
   !!location
   && location.source === 'gps'
+  && Number.isFinite(Number(location.latitude))
+  && Number.isFinite(Number(location.longitude))
   && Date.now() - location.capturedAt <= maxAgeMs
+  && Number(location.accuracy || Infinity) <= maxAccuracy
 );
 
 const getGpsErrorMessage = (error) => {
@@ -84,55 +92,67 @@ const getGpsErrorMessage = (error) => {
   return error.message || 'GPS location is not available right now.';
 };
 
-const getFreshGpsLocation = ({ timeoutMs = 30000, targetAccuracy = 100 } = {}) => new Promise((resolve) => {
+const getFreshGpsLocation = ({
+  timeoutMs = 30000,
+  targetAccuracy = 100,
+  minWaitMs = 0,
+  rejectOnError = false
+} = {}) => new Promise((resolve, reject) => {
   if (!navigator.geolocation || !canUsePreciseLocation()) {
     resolve(null);
     return;
   }
 
+  const startedAt = Date.now();
   let bestLocation = null;
   let settled = false;
   let watchId = null;
+  let timer = null;
 
-  const finish = (location) => {
+  const finish = (location, error = null) => {
     if (settled) return;
     settled = true;
+    if (timer) clearTimeout(timer);
     if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    if (!location && error && rejectOnError) {
+      reject(error);
+      return;
+    }
     resolve(location);
   };
 
-  const timer = setTimeout(() => finish(bestLocation), timeoutMs);
+  timer = setTimeout(() => finish(bestLocation), timeoutMs);
 
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
+      const accuracy = Number(pos.coords.accuracy || Infinity);
       const location = {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
+        accuracy: pos.coords.accuracy || '',
         source: 'gps'
       };
 
-      if (!bestLocation || Number(location.accuracy || Infinity) < Number(bestLocation.accuracy || Infinity)) {
+      if (!bestLocation || accuracy < Number(bestLocation.accuracy || Infinity)) {
         bestLocation = location;
         updateSosLocationStatus(`Finding GPS... best accuracy about ${Math.round(location.accuracy || 0)}m.`, 'info');
       }
 
-      if (!location.accuracy || location.accuracy <= targetAccuracy) {
-        clearTimeout(timer);
+      const waitedLongEnough = Date.now() - startedAt >= minWaitMs;
+      if (Number.isFinite(accuracy) && accuracy <= targetAccuracy && waitedLongEnough) {
         finish(location);
       }
     },
     (error) => {
-      clearTimeout(timer);
       updateSosLocationStatus(getGpsErrorMessage(error), 'error');
-      finish(bestLocation);
+      finish(bestLocation, error);
     },
     { timeout: timeoutMs, maximumAge: 0, enableHighAccuracy: true }
   );
 });
 
 const requestAndCacheUserLocation = async ({ showStatus = false, timeoutMs = 30000 } = {}) => {
-  const location = await getFreshGpsLocation({ timeoutMs });
+  const location = await getFreshGpsLocation({ timeoutMs, targetAccuracy: SOS_READY_LOCATION_MAX_ACCURACY_M, minWaitMs: 1500 });
   if (!location) return null;
 
   saveLastKnownLocation(location, 'gps');
@@ -201,7 +221,7 @@ const updateSosLocationStatus = (message, type = 'info') => {
 const applyDarkMode = (enabled) => {
   document.body.classList.toggle('dark-mode', enabled);
   if (darkModeToggle) {
-    darkModeToggle.textContent = enabled ? '☀️ Light Mode' : '🌙 Dark Mode';
+    darkModeToggle.textContent = enabled ? 'Light Mode' : 'Dark Mode';
   }
 };
 
@@ -376,6 +396,11 @@ const mapIcons = {
     className: '',
     html: `<span class="map-resource-marker ${type.toLowerCase().replace(' ', '-')}"></span>`,
     iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -9]
+  }),
+  checkIn: (status) => L.divIcon({
+    className: '',
+    html: `<span class="map-checkin-marker ${status === 'need_help' ? 'need-help' : 'safe'}"></span>`,
+    iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -10]
   })
 };
 
@@ -452,45 +477,45 @@ const setSosLocationFields = (form, { latitude, longitude, accuracy = '', source
 
 const setSosLocationFromCache = (form) => {
   const cachedLocation = getLastKnownLocation();
-  if (!isUsableGpsLocation(cachedLocation)) return false;
+  if (!isUsableGpsLocation(cachedLocation, SOS_READY_LOCATION_MAX_AGE_MS, SOS_READY_LOCATION_MAX_ACCURACY_M)) return false;
   setSosLocationFields(form, cachedLocation);
   updateSosLocationStatus(`Using ready GPS, accuracy about ${Math.round(cachedLocation.accuracy || 0)}m.`, 'success');
   return true;
 };
 
-const captureCurrentSosLocation = (form) => new Promise((resolve, reject) => {
+const captureCurrentSosLocation = async (form, { allowReadyCache = true } = {}) => {
   if (!navigator.geolocation || !canUsePreciseLocation()) {
-    reject(new Error('Location is not available in this browser or context.'));
-    return;
+    throw new Error('Location is not available in this browser or context.');
   }
 
-  updateSosLocationStatus('Fetching your location...', 'info');
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const location = {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
-        source: 'gps'
-      };
-
-      console.log('Captured Latitude:', location.latitude);
-      console.log('Captured Longitude:', location.longitude);
-      saveLastKnownLocation(location, 'gps');
-      setSosLocationFields(form, location);
-      updateSosLocationStatus(`Location captured successfully. Accuracy about ${Math.round(location.accuracy || 0)}m.`, 'success');
-      resolve(location);
-    },
-    (error) => {
-      reject(error);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
+  if (allowReadyCache) {
+    const cachedLocation = getLastKnownLocation();
+    if (isUsableGpsLocation(cachedLocation, SOS_READY_LOCATION_MAX_AGE_MS, SOS_READY_LOCATION_MAX_ACCURACY_M)) {
+      setSosLocationFields(form, cachedLocation);
+      updateSosLocationStatus(`Using recent GPS, accuracy about ${Math.round(cachedLocation.accuracy || 0)}m.`, 'success');
+      return cachedLocation;
     }
-  );
-});
+  }
+
+  updateSosLocationStatus('Getting GPS quickly. SOS will send even if exact GPS is slow...', 'info');
+  const location = await getFreshGpsLocation({
+    timeoutMs: SOS_LOCATION_TIMEOUT_MS,
+    targetAccuracy: SOS_TARGET_ACCURACY_M,
+    minWaitMs: SOS_MIN_GPS_WAIT_MS,
+    rejectOnError: true
+  });
+
+  if (!location) {
+    throw new Error('GPS location timed out before a usable fix was found.');
+  }
+
+  console.log('Captured Latitude:', location.latitude);
+  console.log('Captured Longitude:', location.longitude);
+  saveLastKnownLocation(location, 'gps');
+  setSosLocationFields(form, location);
+  updateSosLocationStatus(`Exact GPS captured. Accuracy about ${Math.round(location.accuracy || 0)}m.`, 'success');
+  return location;
+};
 
 const setupAlertMap = (mapEl) => {
   const center = JSON.parse(mapEl.dataset.center || 'null');
@@ -623,7 +648,51 @@ const setupAdminSosMap = (mapEl) => {
   if (markers.length > 0 && bounds.isValid()) {
     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
   }
-};const initAllMaps = () => {
+};
+
+const setupCheckInMap = (mapEl) => {
+  if (!mapEl) return;
+
+  let markers = [];
+  try {
+    markers = JSON.parse(mapEl.dataset.markers || '[]');
+  } catch (error) {
+    console.error('Failed to parse check-in map data', error);
+  }
+
+  const center = markers.length ? [markers[0].latitude, markers[0].longitude] : [20.5937, 78.9629];
+  const map = initLeafletMap(mapEl.id, { center, zoom: markers.length ? 8 : 5, dragging: true, scrollWheelZoom: true });
+  if (!map) return;
+
+  const layer = L.featureGroup();
+  const bounds = L.latLngBounds();
+
+  markers.forEach((markerData) => {
+    if (!markerData.latitude || !markerData.longitude) return;
+    const latLng = [markerData.latitude, markerData.longitude];
+    const marker = L.marker(latLng, { icon: mapIcons.checkIn(markerData.status) });
+    const statusLabel = markerData.status === 'need_help' ? 'Need Help' : 'Safe';
+    const routeLink = markerData.directionsUrl
+      ? `<br><a href="${escapeHtml(markerData.directionsUrl)}" target="_blank" rel="noopener">Open route</a>`
+      : '';
+
+    marker.bindPopup(`
+      <strong>${escapeHtml(markerData.userName)}</strong><br>
+      Status: ${escapeHtml(statusLabel)}<br>
+      Location: ${escapeHtml([markerData.city, markerData.state].filter(Boolean).join(', ') || 'Unknown')}<br>
+      Time: ${escapeHtml(markerData.updatedAt)}${routeLink}
+    `);
+    marker.addTo(layer);
+    bounds.extend(latLng);
+  });
+
+  layer.addTo(map);
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+  }
+};
+
+const initAllMaps = () => {
   const alertMapEl = document.getElementById('alertMap');
   if (alertMapEl) setupAlertMap(alertMapEl);
 
@@ -634,6 +703,9 @@ const setupAdminSosMap = (mapEl) => {
 
   const fullMapEl = document.getElementById('fullAlertMap');
   if (fullMapEl) setupAlertMap(fullMapEl);
+
+  const checkInMapEl = document.getElementById('checkInMap');
+  if (checkInMapEl) setupCheckInMap(checkInMapEl);
 };
 
 /* ── 5. AJAX & Transitions ── */
@@ -682,6 +754,87 @@ const shareWhatsApp = (title, url) => {
 const copyToClipboard = (text) => {
   navigator.clipboard.writeText(text).then(() => {
     showToast('Copied to clipboard!', 'success');
+  });
+};
+
+const getSingleBrowserLocation = () => new Promise((resolve) => {
+  if (!navigator.geolocation || !canUsePreciseLocation()) {
+    resolve(null);
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => resolve({
+      latitude: pos.coords.latitude,
+      longitude: pos.coords.longitude
+    }),
+    () => resolve(null),
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+});
+
+const setupStatusCheckIn = () => {
+  const buttons = document.querySelectorAll('[data-checkin-status]');
+  const messageEl = document.getElementById('checkInStatusMessage');
+  const panel = document.querySelector('.checkin-panel');
+  const currentStatusEl = document.getElementById('currentCheckInStatus');
+  if (!buttons.length) return;
+
+  const setMessage = (message, type = 'info') => {
+    if (!messageEl) return;
+    messageEl.textContent = message;
+    messageEl.dataset.type = type;
+  };
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      const oldLabel = button.textContent;
+      const status = button.dataset.checkinStatus;
+      buttons.forEach((btn) => { btn.disabled = true; });
+      button.textContent = 'Updating...';
+      setMessage('Capturing GPS location...', 'info');
+
+      try {
+        const location = await getSingleBrowserLocation();
+        const payload = {
+          status,
+          latitude: location?.latitude ?? '',
+          longitude: location?.longitude ?? '',
+          city: panel?.dataset.checkinCity || '',
+          state: panel?.dataset.checkinState || ''
+        };
+
+        const response = await fetch('/status/checkin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Status update failed.');
+        }
+
+        setMessage('Status updated successfully.', 'success');
+        if (currentStatusEl) {
+          const label = status === 'safe' ? 'Safe' : 'Need Help';
+          const className = status === 'safe' ? 'safe' : 'need-help';
+          currentStatusEl.innerHTML = `Current status: <strong class="${className}">${label}</strong> · Updated ${new Date().toLocaleString()}`;
+        }
+        showToast('Status updated successfully.', 'success');
+      } catch (error) {
+        console.error('Check-in failed:', error);
+        setMessage(error.message || 'Could not update status.', 'error');
+        showToast(error.message || 'Could not update status.', 'error');
+      } finally {
+        button.textContent = oldLabel;
+        buttons.forEach((btn) => { btn.disabled = false; });
+      }
+    });
   });
 };
 
@@ -737,6 +890,8 @@ const rebindEvents = () => {
       );
     };
   }
+
+  setupStatusCheckIn();
 };
 
 const init = () => {
@@ -764,9 +919,9 @@ const init = () => {
     if (enableSosLocationBtn) {
       enableSosLocationBtn.addEventListener('click', async () => {
         enableSosLocationBtn.disabled = true;
-        enableSosLocationBtn.textContent = 'Fetching location...';
+        enableSosLocationBtn.textContent = 'Improving GPS...';
         try {
-          await captureCurrentSosLocation(sosForm);
+          await captureCurrentSosLocation(sosForm, { allowReadyCache: false });
         } catch (error) {
           updateSosLocationStatus(getGpsErrorMessage(error), 'error');
         } finally {
@@ -832,6 +987,7 @@ const init = () => {
         }
 
         try {
+          if (btn) btn.textContent = 'Sending SOS...';
           await captureCurrentSosLocation(sosForm);
           console.log('Saved Successfully');
           sosForm.submit();
@@ -848,7 +1004,7 @@ const init = () => {
             return;
           }
 
-          const useApproximate = confirm(`${getGpsErrorMessage(error)}\n\nPress OK to send SOS with selected state/city only, or Cancel to retry GPS.`);
+          const useApproximate = confirm(`${getGpsErrorMessage(error)}\n\nPress OK to send SOS now with selected state/city. Press Cancel only if you want to retry GPS.`);
           if (useApproximate) {
             submitWithoutExactLocation('SOS will be sent with approximate state/city location.');
           } else {

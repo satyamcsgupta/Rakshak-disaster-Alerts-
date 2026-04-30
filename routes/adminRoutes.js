@@ -16,6 +16,7 @@ router.post('/alerts/:id/delete', alertController.deleteAlert);
 router.get('/sos', sosController.adminSOSList);
 router.post('/sos/:id/status', sosController.updateSOSStatus);
 router.post('/sos/:id/verification', sosController.updateSOSVerification);
+router.post('/sos/:id/delete', sosController.deleteFalseSOS);
 
 const resourceController = require('../controllers/resourceController');
 router.get('/resources', resourceController.adminResourceList);

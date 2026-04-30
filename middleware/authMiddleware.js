@@ -1,5 +1,18 @@
 const requireAuth = (req, res, next) => {
   if (!req.session.user) {
+    const acceptHeader = String(req.headers.accept || '');
+    const requestedWith = String(req.headers['x-requested-with'] || '');
+    const expectsJson = req.xhr || requestedWith.toLowerCase() === 'xmlhttprequest' || acceptHeader.includes('application/json');
+    const expectsEventStream = acceptHeader.includes('text/event-stream');
+
+    if (expectsEventStream) {
+      return res.status(401).end();
+    }
+
+    if (expectsJson) {
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+
     return res.redirect('/auth/login');
   }
 

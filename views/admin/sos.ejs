@@ -52,6 +52,13 @@
 </section>
 
 <section class="content-panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Verification workflow</p>
+      <h2>Review SOS authenticity</h2>
+    </div>
+    <p class="muted">Use GPS confidence, contact availability, message quality, duplicates, and responder activity before marking a request false.</p>
+  </div>
   <% if (requests.length === 0) { %>
     <p class="muted">No SOS requests received yet.</p>
   <% } else { %>
@@ -60,18 +67,28 @@
         <thead>
           <tr>
             <th>Name</th>
+            <th>Contact</th>
             <th>State</th>
             <th>Message</th>
             <th>Status</th>
             <th>Verification</th>
+            <th>Evidence</th>
             <th>Coordinates</th>
             <th>Time</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <% requests.forEach((request) => { %>
             <tr>
               <td><%= request.userName %></td>
+              <td>
+                <% if (request.contactNumber) { %>
+                  <a class="small-link" href="tel:<%= request.contactNumber %>"><%= request.contactNumber %></a>
+                <% } else { %>
+                  <span class="badge high">No contact</span>
+                <% } %>
+              </td>
               <td><%= request.state %></td>
               <td><%= request.distressMessage %></td>
               <td>
@@ -91,11 +108,25 @@
                     <% }) %>
                   </select>
                   <input type="text" name="adminNote" value="<%= request.adminNote || '' %>" placeholder="Admin note">
-                  <button class="btn btn-secondary btn-small" type="submit">Save</button>
+                  <div class="verification-actions">
+                    <button class="btn btn-secondary btn-small" type="submit">Save</button>
+                    <button class="btn btn-primary btn-small" type="submit" name="quickVerification" value="Verified">Verify</button>
+                    <button class="btn btn-danger btn-small" type="submit" name="quickVerification" value="False Alarm">False Alarm</button>
+                  </div>
                   <% if (request.verifiedAt) { %>
                     <span class="muted">Updated <%= request.verifiedAt.toLocaleString() %></span>
                   <% } %>
                 </form>
+              </td>
+              <td>
+                <div class="verification-summary <%= request.verificationProfile?.risk || 'review' %>">
+                  <strong><%= request.verificationProfile?.recommendation || 'Needs manual review' %></strong>
+                </div>
+                <div class="verification-signal-list">
+                  <% (request.verificationProfile?.signals || []).forEach((signal) => { %>
+                    <span class="verification-signal <%= signal.type %>"><%= signal.label %></span>
+                  <% }) %>
+                </div>
               </td>
               <td>
                 <% if (request.locationSource === 'gps' && request.latitude !== null && request.latitude !== undefined && request.longitude !== null && request.longitude !== undefined) { %>
@@ -113,6 +144,19 @@
                 <% } %>
               </td>
               <td><%= request.createdAt.toLocaleString() %></td>
+              <td>
+                <form
+                  action="/admin/sos/<%= request._id %>/delete"
+                  method="POST"
+                  class="delete-false-sos-form"
+                  onsubmit="return confirm('This will mark the SOS as false and delete it permanently. Continue?')"
+                >
+                  <input type="hidden" name="confirmFalseAlarm" value="true">
+                  <button class="btn btn-danger btn-small" type="submit">
+                    <%= (request.verificationStatus || 'Unverified') === 'False Alarm' ? 'Delete False SOS' : 'Mark False & Delete' %>
+                  </button>
+                </form>
+              </td>
             </tr>
           <% }) %>
         </tbody>

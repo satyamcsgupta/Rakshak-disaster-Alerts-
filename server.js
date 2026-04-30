@@ -36,6 +36,7 @@ app.use((req, res, next) => {
 app.use('/', require('./routes/alertRoutes'));
 app.use('/admin', require('./routes/adminRoutes'));
 app.use('/sos', require('./routes/sosRoutes'));
+app.use('/status', require('./routes/statusRoutes'));
 
 app.use('/auth', require('./routes/authRoutes'));
 app.use('/tts', require('./routes/ttsRoutes'));
