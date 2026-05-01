@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
           currentRequests.forEach((request) => knownRequestIds.add(String(request._id)));
           hasLoadedOnce = true;
           renderRequests(currentRequests);
-          updateMap(currentRequests);
+          updateMap(currentRequests, { preserveView: silent });
           setLiveStatus(`Live SOS updates active. Last checked ${new Date().toLocaleTimeString()}.`, 'success');
         }
       })
@@ -307,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cached) {
           currentRequests = cached.requests;
           renderRequests(currentRequests);
-          updateMap(currentRequests);
+          updateMap(currentRequests, { preserveView: silent });
           setLiveStatus(`Offline mode: showing cached SOS from ${new Date(cached.savedAt).toLocaleTimeString()}.`, 'warning');
           return;
         }
@@ -493,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
-  function updateMap(requests) {
+  function updateMap(requests, { preserveView = false } = {}) {
     if (!map) return;
     map.removeLayer(markersLayer);
     markersLayer.clearLayers();
@@ -555,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     map.addLayer(markersLayer);
 
-    if (hasValidCoords) {
+    if (hasValidCoords && !preserveView) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     }
   }

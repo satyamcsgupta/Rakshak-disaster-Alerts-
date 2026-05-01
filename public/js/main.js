@@ -2,8 +2,6 @@
 let currentAudio = null;
 let currentVoiceButton = null;
 let playbackCancelled = false;
-let autoRefreshInterval = null;
-let isAutoRefreshPaused = true;
 let sosLocationWatchId = null;
 
 /* ── UI Elements ── */
@@ -1043,23 +1041,15 @@ const init = () => {
 
   requestAndCacheUserLocation({ showStatus: false });
 
-  // Auto refresh is opt-in so forms, GPS prompts, and mobile maps do not refresh unexpectedly.
-  const startAutoRefresh = () => {
-    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-    autoRefreshInterval = setInterval(() => {
-      if (!isAutoRefreshPaused) handleFilterSubmit();
-    }, 60000); // 1 minute
-  };
-
   const refreshBtn = document.getElementById('refreshToggle');
   if (refreshBtn) {
     refreshBtn.onclick = () => {
-      isAutoRefreshPaused = !isAutoRefreshPaused;
-      refreshBtn.textContent = isAutoRefreshPaused ? 'Enable Auto Refresh' : 'Pause Refresh';
       const statusText = document.getElementById('refreshStatus');
-      if (statusText) statusText.textContent = isAutoRefreshPaused ? 'Updates paused' : 'Live updates active';
+      if (statusText) statusText.textContent = 'Refreshing alerts...';
+      handleFilterSubmit().finally(() => {
+        if (statusText) statusText.textContent = 'Updated. Map stays fixed until you refresh again.';
+      });
     };
-    startAutoRefresh();
   }
 };
 
