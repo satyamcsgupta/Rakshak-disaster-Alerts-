@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Rakshak Practical Explanation Guide</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #172033; line-height: 1.48; font-size: 11.5pt; }
+    h1 { font-size: 26pt; color: #0f766e; margin: 0 0 8px; }
+    h2 { font-size: 18pt; color: #0f766e; border-bottom: 2px solid #d7ece8; padding-bottom: 5px; margin-top: 26px; page-break-after: avoid; }
+    h3 { font-size: 13.5pt; color: #1e3a5f; margin-top: 18px; page-break-after: avoid; }
+    h4 { font-size: 11.5pt; color: #334155; margin-bottom: 4px; }
+    p { margin: 6px 0; }
+    ul, ol { margin-top: 6px; }
+    li { margin: 4px 0; }
+    code { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-family: Consolas, monospace; font-size: 10.5pt; }
+    .cover { min-height: 92vh; display: flex; flex-direction: column; justify-content: center; border: 4px solid #0f766e; padding: 28px; box-sizing: border-box; }
+    .subtitle { font-size: 15pt; color: #475569; }
+    .tag { display: inline-block; background: #e0f2f1; color: #0f766e; padding: 4px 8px; border-radius: 999px; margin: 4px 4px 4px 0; font-size: 10pt; }
+    .page-break { page-break-before: always; }
+    .box { border-left: 4px solid #0f766e; background: #f8fafc; padding: 10px 12px; margin: 10px 0; }
+    .warn { border-left-color: #dc2626; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 10.3pt; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px; vertical-align: top; }
+    th { background: #e0f2f1; color: #0f766e; text-align: left; }
+    .small { font-size: 10pt; color: #475569; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <h1>Rakshak</h1>
+    <p class="subtitle">Multilingual Disaster Alert and SOS Platform</p>
+    <p><strong>Practical/Viva Explanation Guide</strong></p>
+    <p>This document explains the full project code, important flows, database design, alert system, SOS system, admin panel, frontend logic, and expected practical questions.</p>
+    <p>
+      <span class="tag">Node.js</span>
+      <span class="tag">Express.js</span>
+      <span class="tag">MongoDB</span>
+      <span class="tag">Mongoose</span>
+      <span class="tag">EJS</span>
+      <span class="tag">Leaflet Maps</span>
+      <span class="tag">Server Sent Events</span>
+      <span class="tag">Multilingual Alerts</span>
+    </p>
+  </section>
+
+  <section class="page-break">
+    <h2>1. Project Overview</h2>
+    <p><strong>Rakshak</strong> is a full-stack web application for disaster alert communication and emergency SOS handling. The main problem it solves is that during a disaster, people need fast alerts in a language they understand, clear safety guidance, nearby safe resources, and a simple way to ask for help.</p>
+    <p>The project has two main user roles:</p>
+    <ul>
+      <li><strong>Normal user:</strong> registers, logs in, views local disaster alerts, listens to alerts, checks weather, marks safe/need help, sends SOS, and helps nearby SOS requests.</li>
+      <li><strong>Admin:</strong> manages alerts, resources/safe zones, SOS requests, verification status, and dashboard statistics.</li>
+    </ul>
+    <div class="box">
+      <strong>One-line explanation for viva:</strong> Rakshak is a Node.js, Express, MongoDB and EJS based disaster management platform that provides multilingual alerts, official feed integration, weather information, SOS creation with GPS, real-time SOS updates, and admin verification.
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Technology Stack</h2>
+    <table>
+      <tr><th>Part</th><th>Technology</th><th>Purpose</th></tr>
+      <tr><td>Backend</td><td>Node.js, Express.js</td><td>Creates routes, controllers, sessions, APIs, and server-side rendering.</td></tr>
+      <tr><td>Frontend</td><td>EJS, HTML, CSS, JavaScript</td><td>Builds dynamic pages and browser interactions.</td></tr>
+      <tr><td>Database</td><td>MongoDB with Mongoose</td><td>Stores users, alerts, SOS records, resources, sessions, and check-in status.</td></tr>
+      <tr><td>Authentication</td><td>express-session, connect-mongo, bcryptjs</td><td>Secure login sessions and hashed passwords.</td></tr>
+      <tr><td>Maps</td><td>Leaflet and marker clustering</td><td>Shows alerts, safe zones, SOS requests, routes, and check-in location.</td></tr>
+      <tr><td>External APIs</td><td>SACHET RSS, Google Translate endpoint, Google TTS endpoint, Open-Meteo, OSRM, Twilio/webhook optional</td><td>Official alerts, translations, voice playback, weather, routes, and SMS fallback.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>3. Folder Structure</h2>
+    <table>
+      <tr><th>Folder/File</th><th>Meaning</th></tr>
+      <tr><td><code>server.js</code></td><td>Main entry point. Starts Express, connects database, configures session, static files, routes, and error pages.</td></tr>
+      <tr><td><code>config/</code></td><td>Database connection, supported languages, and state coordinates.</td></tr>
+      <tr><td><code>models/</code></td><td>Mongoose schemas for MongoDB collections.</td></tr>
+      <tr><td><code>controllers/</code></td><td>Business logic for auth, alerts, SOS, resources, and check-in status.</td></tr>
+      <tr><td><code>routes/</code></td><td>Express route definitions that connect URLs to controller functions.</td></tr>
+      <tr><td><code>middleware/</code></td><td>Authentication and authorization guards.</td></tr>
+      <tr><td><code>services/</code></td><td>Reusable helper services for weather, translation, official alerts, SMS, event bus, and admin seeding.</td></tr>
+      <tr><td><code>views/</code></td><td>EJS pages rendered on the server.</td></tr>
+      <tr><td><code>public/</code></td><td>CSS, browser JavaScript, manifest, and service worker.</td></tr>
+      <tr><td><code>scripts/</code> and <code>seed/</code></td><td>Utility scripts for demo data and local development.</td></tr>
+    </table>
+  </section>
+
+  <section class="page-break">
+    <h2>4. Application Startup Flow</h2>
+    <h3>4.1 server.js</h3>
+    <ol>
+      <li>Imports Express, path, dotenv, express-session, database connection, and admin seed service.</li>
+      <li>Loads environment variables using <code>dotenv.config()</code>.</li>
+      <li>Connects to MongoDB by calling <code>connectDB()</code>.</li>
+      <li>After DB connection, calls <code>ensureDefaultAdmin()</code> so the app always has an admin account if one does not exist.</li>
+      <li>Configures EJS as the view engine and sets the <code>views</code> folder.</li>
+      <li>Enables form parsing with <code>express.urlencoded()</code> and JSON parsing with <code>express.json()</code>.</li>
+      <li>Serves static files from <code>public/</code>.</li>
+      <li>Configures sessions. Session data is stored inside MongoDB using <code>connect-mongo</code>, so login remains stable even if the server restarts.</li>
+      <li>Adds <code>res.locals.currentUser</code>, making the logged-in user available in all EJS views.</li>
+      <li>Mounts routes: alerts/home, admin, SOS, status, auth, and TTS.</li>
+      <li>Adds a 404 page for unknown routes.</li>
+      <li>Starts the server on <code>PORT</code> from environment or default <code>3000</code>.</li>
+    </ol>
+    <div class="box">
+      <strong>Viva answer:</strong> The first file executed is <code>server.js</code>. It prepares middleware, session, database, routes and starts listening. It is the central file that connects the whole MVC structure.
+    </div>
+  </section>
+
+  <section>
+    <h2>5. Database Connection and Configuration</h2>
+    <h3>5.1 config/db.js</h3>
+    <p>This file exports an async <code>connectDB</code> function. It reads <code>MONGO_URI</code> from the environment. If the variable is missing, it uses local MongoDB: <code>mongodb://127.0.0.1:27017/disaster_alert_mvp</code>. If connection succeeds, it logs <code>MongoDB connected</code>. If it fails, it logs the error and exits the process.</p>
+    <h3>5.2 config/languages.js</h3>
+    <p>This file defines all supported languages and maps each language to an alert message field. Example: Hindi maps to <code>messageHindi</code>, Marathi maps to <code>messageMarathi</code>. It also stores voice codes and has <code>detectLanguageFromHeader</code> to detect preferred language from browser headers.</p>
+    <h3>5.3 config/stateCoordinates.js</h3>
+    <p>This file stores latitude and longitude for supported Indian states. The app uses these coordinates for map centering, weather API calls, and SOS fallback location when exact GPS is not available.</p>
+  </section>
+
+  <section class="page-break">
+    <h2>6. Mongoose Models</h2>
+    <h3>6.1 User Model</h3>
+    <p><code>User.js</code> stores user account details. Important fields are name, email, phone, password, state, city, language, role, availability, emergency contact name and phone. Password is stored as a bcrypt hash, not plain text. Role can be <code>user</code> or <code>admin</code>.</p>
+    <h3>6.2 Alert Model</h3>
+    <p><code>Alert.js</code> stores disaster alerts created by admins. It stores title, disaster type, state, city, severity, optional latitude/longitude, multilingual messages, and precautions. Severity is restricted to High, Medium, or Low. Timestamps automatically add <code>createdAt</code> and <code>updatedAt</code>.</p>
+    <h3>6.3 SOS Model</h3>
+    <p><code>SOS.js</code> stores emergency help requests. It supports registered or anonymous-style user name values, contact number, state, city, distress message, GPS latitude/longitude, location accuracy, source, status, urgency, assigned volunteer, verification status, verified admin, and admin notes.</p>
+    <p>Important status values are <code>Pending</code>, <code>In Progress</code>, and <code>Resolved</code>. Verification values are <code>Unverified</code>, <code>Verified</code>, <code>Needs Review</code>, and <code>False Alarm</code>.</p>
+    <h3>6.4 Resource Model</h3>
+    <p><code>Resource.js</code> stores safe zones such as shelters, hospitals, water, food, and medical support points. It includes location, capacity, contact, address, and active/inactive status.</p>
+    <h3>6.5 SafeCheck Model</h3>
+    <p><code>SafeCheck.js</code> stores a user's response for a specific alert, such as <code>Safe</code> or <code>Need Help</code>.</p>
+    <h3>6.6 CheckInStatus Model</h3>
+    <p><code>CheckInStatus.js</code> stores the latest global status of each user. It uses <code>userId</code> as unique, so one user has one current check-in record. Admin can view safe users and users needing help on dashboard maps.</p>
+  </section>
+
+  <section>
+    <h2>7. Authentication Flow</h2>
+    <h3>7.1 Register</h3>
+    <p>The register page is handled by <code>authController.register</code>. It checks password and confirm password, validates minimum password length, checks duplicate email, hashes the password with bcrypt, creates the user, stores selected details in <code>req.session.user</code>, and redirects based on role.</p>
+    <p>If the user enters the correct admin code from <code>ADMIN_SECRET</code> or default <code>ADMIN123</code>, the role becomes admin. Otherwise the role is normal user.</p>
+    <h3>7.2 Login</h3>
+    <p><code>authController.login</code> finds the user by email, compares the entered password with the bcrypt hash, stores user info in session, then redirects admin to <code>/admin</code> and user to localized <code>/alerts</code>.</p>
+    <h3>7.3 Profile</h3>
+    <p>The profile controller lets the user update name, email, phone, state, city, language, and emergency contact. After update, the session is refreshed with latest values.</p>
+    <h3>7.4 Logout</h3>
+    <p>Logout destroys the session and redirects to home.</p>
+    <h3>7.5 Middleware</h3>
+    <p><code>requireAuth</code> protects logged-in pages. It returns JSON for AJAX requests, ends event streams with 401, or redirects normal browser requests to login. <code>requireAdmin</code> allows only admin users. <code>redirectIfAuthenticated</code> prevents logged-in users from opening login/register pages again.</p>
+  </section>
+
+  <section class="page-break">
+    <h2>8. Alert System Flow</h2>
+    <h3>8.1 Admin Creates Alert</h3>
+    <ol>
+      <li>Admin opens <code>/admin/alerts/new</code>.</li>
+      <li>The route calls <code>alertController.newAlertForm</code>.</li>
+      <li>Admin fills title, disaster type, state, severity, multilingual messages, location, and precautions.</li>
+      <li>Form submits to <code>POST /admin/alerts</code>.</li>
+      <li><code>createAlert</code> parses latitude/longitude and saves the alert in MongoDB.</li>
+      <li>User can now see the alert on <code>/alerts</code> if the state matches.</li>
+    </ol>
+    <h3>8.2 User Views Alerts</h3>
+    <p><code>alertController.userAlertList</code> is one of the most important functions. It decides selected state, city and preferred language. Then it loads multiple things in parallel: local alerts from MongoDB, official alerts from SACHET, resources, weather, and current check-in status.</p>
+    <p>For each local alert, it selects the correct language field using <code>getLocalizedMessage</code>. It also translates precautions using <code>translationService.translateText</code> and creates action guidance using <code>alertGuidanceService.buildGuidance</code>.</p>
+    <p>The controller also chooses a <code>popupAlert</code>. It sorts by severity and latest date, so the most important alert can be shown as an instant alert popup.</p>
+    <h3>8.3 Official Alerts</h3>
+    <p><code>officialAlertService.fetchOfficialAlerts</code> calls the SACHET NDMA RSS feed for the selected state. It parses XML using <code>xml2js</code>, removes HTML from descriptions, normalizes items, and removes duplicates. If the feed fails, it returns an empty list so the app still works.</p>
+    <h3>8.4 Translation</h3>
+    <p><code>translationService.js</code> uses a Google Translate endpoint. It maps language names to codes such as <code>hi</code>, <code>mr</code>, <code>ta</code>. It uses a memory cache so the same text is not translated repeatedly. If translation fails, it returns the original English text.</p>
+    <h3>8.5 Voice/TTS</h3>
+    <p><code>ttsRoutes.js</code> receives text and language, limits text to 200 characters for safety, calls Google's translate TTS endpoint, and sends back MP3 audio. In the browser, <code>main.js</code> splits long alert text into chunks and plays each audio chunk one by one.</p>
+  </section>
+
+  <section>
+    <h2>9. SOS System Flow</h2>
+    <h3>9.1 User Sends SOS</h3>
+    <ol>
+      <li>User opens alerts page and presses the SOS form button.</li>
+      <li><code>public/js/main.js</code> tries to capture high-accuracy GPS using browser geolocation.</li>
+      <li>If GPS works, hidden fields are filled with latitude, longitude, accuracy, and source <code>gps</code>.</li>
+      <li>If GPS fails, user can still submit SOS with state/city fallback.</li>
+      <li>Form submits to <code>POST /sos</code>.</li>
+      <li><code>sosController.createSOS</code> saves SOS in MongoDB.</li>
+      <li>It publishes a real-time SOS event using <code>publishSOSChange</code>.</li>
+      <li>It calls <code>sendSOSFallbackSMS</code> in background if SMS configuration exists.</li>
+      <li>User sees <code>sos-success.ejs</code> and can start live location sharing.</li>
+    </ol>
+    <h3>9.2 Live Location Update</h3>
+    <p>After SOS success, <code>public/js/sos-live.js</code> can repeatedly watch the user's GPS. It sends location updates to <code>POST /sos/:id/location</code>. The server checks ownership before updating. It only allows the owner of that SOS to update location. If the request is resolved, update is blocked.</p>
+    <h3>9.3 Real-time SOS Updates</h3>
+    <p><code>sosEventBus.js</code> creates an in-memory EventEmitter. When a SOS is created, accepted, resolved, deleted, or updated, the server publishes an event. <code>streamSOSUpdates</code> opens a Server Sent Events stream at <code>/sos/api/stream</code>. Admins can see all events; users see only events from their state.</p>
+    <h3>9.4 Nearby SOS Page</h3>
+    <p><code>/sos/nearby</code> shows nearby requests. Browser code in <code>public/js/sos.js</code> fetches <code>/sos/api/requests</code>, renders SOS cards, displays requests on Leaflet map, allows volunteers to accept/resolve, allows owner to cancel, and can draw route from responder location to victim location using OSRM route API.</p>
+    <h3>9.5 Admin Verification</h3>
+    <p>Admin opens <code>/admin/sos</code>. <code>adminSOSList</code> loads all SOS records and builds a verification profile. It checks GPS confidence, contact availability, message quality, duplicate recent requests, and responder assignment. This helps admin decide whether SOS is genuine, needs review, or is false alarm.</p>
+    <h3>9.6 SMS Fallback</h3>
+    <p><code>smsService.js</code> collects recipients from <code>ADMIN_ALERT_PHONE</code> and user's emergency contact. It supports Twilio or generic webhook provider. If SMS variables are not configured, SOS still saves and real-time web alerts still work.</p>
+  </section>
+
+  <section class="page-break">
+    <h2>10. Admin Dashboard</h2>
+    <p><code>alertController.adminDashboard</code> uses <code>Promise.all</code> to collect many dashboard values efficiently:</p>
+    <ul>
+      <li>Total alert count and SOS count.</li>
+      <li>Latest alerts and latest SOS requests.</li>
+      <li>High, medium, and low severity alert counts.</li>
+      <li>Pending and resolved SOS counts.</li>
+      <li>Total safe users and users needing help.</li>
+      <li>Latest check-ins and check-in map data.</li>
+    </ul>
+    <p>The dashboard helps admin monitor disaster activity, urgent SOS requests, and user safety status.</p>
+  </section>
+
+  <section>
+    <h2>11. Resource/Safe Zone Management</h2>
+    <p><code>resourceController.js</code> manages safe zones and emergency resources. Admin can add, edit, delete and list resources. Each resource has type, state, city, coordinates, capacity, phone, and active status. On user alert page, active resources of selected state are loaded and shown on the map as safe zones.</p>
+    <div class="box">
+      <strong>Viva answer:</strong> Resources represent practical help points like shelters and hospitals. They are stored in MongoDB and shown on the same map as alerts so users can find nearby help.
+    </div>
+  </section>
+
+  <section>
+    <h2>12. Check-in / Mark Safe System</h2>
+    <p>There are two related concepts:</p>
+    <ul>
+      <li><code>SafeCheck</code> stores a response for a particular alert.</li>
+      <li><code>CheckInStatus</code> stores the latest global safety status of a user.</li>
+    </ul>
+    <p><code>statusController.checkIn</code> receives <code>safe</code> or <code>need_help</code> from the browser. It saves location if available. It uses <code>findOneAndUpdate</code> with <code>upsert</code>, so it updates existing status or creates a new one.</p>
+    <p>Admin dashboard uses these records to show how many users are safe and how many need help.</p>
+  </section>
+
+  <section class="page-break">
+    <h2>13. Frontend JavaScript Explanation</h2>
+    <h3>13.1 public/js/main.js</h3>
+    <p>This is the main browser script. It handles dark mode, accessibility mode, toast messages, voice playback, maps, AJAX filtering, WhatsApp sharing, copy-to-clipboard, GPS capture, SOS submission, check-in buttons, and service worker registration.</p>
+    <h4>Important functions</h4>
+    <ul>
+      <li><code>getFreshGpsLocation</code>: watches GPS and returns best location within timeout.</li>
+      <li><code>captureCurrentSosLocation</code>: fills SOS hidden fields with fresh GPS.</li>
+      <li><code>setupAlertMap</code>: creates Leaflet map for alerts and safe zones.</li>
+      <li><code>speakText</code>: plays translated alert audio through <code>/tts</code>.</li>
+      <li><code>handleFilterSubmit</code>: updates alert page with AJAX when filter changes.</li>
+      <li><code>setupStatusCheckIn</code>: sends safe/need-help check-in to server.</li>
+    </ul>
+    <h3>13.2 public/js/sos.js</h3>
+    <p>This script powers the nearby SOS page. It loads SOS requests, renders cards, updates the map, calculates distances, shows browser notifications, connects to real-time SSE stream, falls back to polling every 30 seconds, caches requests for offline-like viewing, and draws route lines.</p>
+    <h3>13.3 public/js/sos-live.js</h3>
+    <p>This script runs after SOS is sent. It lets the victim start/stop live GPS sharing. It avoids sending too many updates by checking time and movement distance, then calls <code>/sos/:id/location</code>.</p>
+    <h3>13.4 public/sw.js and manifest.json</h3>
+    <p><code>manifest.json</code> gives app name, theme color, icons, and standalone display behavior. <code>sw.js</code> caches important assets and handles notification clicks by opening <code>/sos/nearby</code>.</p>
+  </section>
+
+  <section>
+    <h2>14. Views / EJS Pages</h2>
+    <table>
+      <tr><th>View</th><th>Purpose</th></tr>
+      <tr><td><code>views/home.ejs</code></td><td>Landing/home page with platform introduction and navigation.</td></tr>
+      <tr><td><code>views/auth/register.ejs</code></td><td>User/admin registration form.</td></tr>
+      <tr><td><code>views/auth/login.ejs</code></td><td>Login form.</td></tr>
+      <tr><td><code>views/auth/profile.ejs</code></td><td>Profile update form.</td></tr>
+      <tr><td><code>views/alerts/index.ejs</code></td><td>Main user dashboard for alerts, weather, map, resources, check-in, and SOS form.</td></tr>
+      <tr><td><code>views/alerts/show.ejs</code></td><td>Detailed alert page with localized message and guidance.</td></tr>
+      <tr><td><code>views/admin/dashboard.ejs</code></td><td>Admin dashboard analytics and check-in map.</td></tr>
+      <tr><td><code>views/admin/alerts.ejs</code></td><td>Admin alert management list.</td></tr>
+      <tr><td><code>views/admin/new-alert.ejs</code></td><td>Create/edit alert form.</td></tr>
+      <tr><td><code>views/admin/sos.ejs</code></td><td>Admin SOS monitoring and verification page.</td></tr>
+      <tr><td><code>views/admin/resources.ejs</code></td><td>Safe zone/resource list.</td></tr>
+      <tr><td><code>views/admin/new-resource.ejs</code></td><td>Create/edit resource form.</td></tr>
+      <tr><td><code>views/sos/nearby.ejs</code></td><td>Nearby SOS volunteer/help page.</td></tr>
+      <tr><td><code>views/sos-success.ejs</code></td><td>Confirmation page after SOS submission.</td></tr>
+      <tr><td><code>views/preparedness.ejs</code></td><td>Emergency preparedness guide.</td></tr>
+      <tr><td><code>views/partials/header.ejs</code>, <code>footer.ejs</code></td><td>Reusable layout parts.</td></tr>
+      <tr><td><code>views/404.ejs</code>, <code>500.ejs</code></td><td>Error pages.</td></tr>
+    </table>
+  </section>
+
+  <section class="page-break">
+    <h2>15. Routes Summary</h2>
+    <table>
+      <tr><th>Route</th><th>Controller/Action</th><th>Use</th></tr>
+      <tr><td><code>GET /</code></td><td><code>homePage</code></td><td>Home page.</td></tr>
+      <tr><td><code>GET /alerts</code></td><td><code>userAlertList</code></td><td>User alert dashboard.</td></tr>
+      <tr><td><code>GET /alerts/:id</code></td><td><code>alertDetails</code></td><td>Alert detail page.</td></tr>
+      <tr><td><code>POST /alerts/:id/safe</code></td><td><code>markAsSafe</code></td><td>Mark safe for alert.</td></tr>
+      <tr><td><code>GET/POST /auth/register</code></td><td><code>showRegister/register</code></td><td>Registration.</td></tr>
+      <tr><td><code>GET/POST /auth/login</code></td><td><code>showLogin/login</code></td><td>Login.</td></tr>
+      <tr><td><code>GET/POST /auth/profile</code></td><td><code>showProfile/updateProfile</code></td><td>Profile.</td></tr>
+      <tr><td><code>POST /auth/logout</code></td><td><code>logout</code></td><td>Logout.</td></tr>
+      <tr><td><code>POST /sos</code></td><td><code>createSOS</code></td><td>Create SOS.</td></tr>
+      <tr><td><code>GET /sos/nearby</code></td><td><code>nearbySOS</code></td><td>Nearby SOS page.</td></tr>
+      <tr><td><code>GET /sos/api/requests</code></td><td><code>getNearbyRequests</code></td><td>Nearby SOS JSON API.</td></tr>
+      <tr><td><code>GET /sos/api/stream</code></td><td><code>streamSOSUpdates</code></td><td>Server Sent Events live updates.</td></tr>
+      <tr><td><code>POST /sos/:id/accept</code></td><td><code>acceptRequest</code></td><td>Volunteer accepts SOS.</td></tr>
+      <tr><td><code>POST /sos/:id/resolve</code></td><td><code>resolveRequest</code></td><td>Resolve SOS.</td></tr>
+      <tr><td><code>POST /sos/:id/cancel</code></td><td><code>cancelRequest</code></td><td>Owner cancels SOS.</td></tr>
+      <tr><td><code>POST /sos/:id/location</code></td><td><code>updateSOSLocation</code></td><td>Victim updates live GPS.</td></tr>
+      <tr><td><code>POST /status/checkin</code></td><td><code>checkIn</code></td><td>Save safe/need-help status.</td></tr>
+      <tr><td><code>GET /tts</code></td><td><code>ttsRoutes</code></td><td>Return MP3 voice for alert text.</td></tr>
+      <tr><td><code>/admin/*</code></td><td>Admin controllers</td><td>Dashboard, alerts, resources, SOS verification.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>16. How to Explain Major Features in Practical</h2>
+    <h3>16.1 How SOS Works</h3>
+    <p>When user clicks SOS, browser JavaScript requests GPS. If allowed, it stores latitude, longitude, accuracy, and source in hidden form fields. The Express route <code>POST /sos</code> calls <code>createSOS</code>. The controller validates coordinates, creates an SOS document in MongoDB, publishes a real-time event to connected clients, tries SMS fallback if configured, and renders success page. Admin and nearby users receive updates through SSE and API refresh.</p>
+    <h3>16.2 How Alert Is Coming</h3>
+    <p>There are two sources of alerts. First, admin-created alerts are stored in MongoDB and fetched by state. Second, official alerts are fetched from SACHET NDMA RSS feeds. The alert controller combines both sources, translates content if needed, adds weather and guidance, then renders <code>alerts/index.ejs</code>.</p>
+    <h3>16.3 How Multilingual Support Works</h3>
+    <p>The alert model stores separate fields for different languages. The selected language comes from query parameter, session, user profile, or browser header. The controller chooses the matching message field. For dynamic content like official alerts and guidance, the translation service calls Google Translate and caches the result.</p>
+    <h3>16.4 How Real-time Updates Work</h3>
+    <p>The server uses Node's EventEmitter in <code>sosEventBus.js</code>. When SOS changes, it emits an event. The SSE route keeps an HTTP connection open and writes events to the browser. The browser listens using <code>EventSource</code>. If SSE has a problem, the frontend still polls every 30 seconds.</p>
+    <h3>16.5 How Admin Detects False SOS</h3>
+    <p>The system does not automatically delete SOS. It gives admin verification signals: GPS confidence, contact availability, generic message, duplicate nearby/recent requests, and responder assignment. Admin can mark as Verified, Needs Review, or False Alarm. False alarm can then be resolved or deleted.</p>
+  </section>
+
+  <section class="page-break">
+    <h2>17. Expected Viva Questions and Answers</h2>
+    <h3>Basic Questions</h3>
+    <ol>
+      <li><strong>What is your project?</strong><br>Rakshak is a multilingual disaster alert and SOS platform for users and admins. It shows local alerts, official alerts, weather, safe zones, and lets users send SOS with GPS.</li>
+      <li><strong>Which architecture did you use?</strong><br>I used MVC style: models for database schemas, controllers for logic, routes for URLs, views for EJS pages, services for reusable external/API logic.</li>
+      <li><strong>Why MongoDB?</strong><br>MongoDB is flexible for storing user profiles, alerts, SOS requests, and dynamic fields like multilingual messages and location data. Mongoose provides schema validation.</li>
+      <li><strong>How do you secure passwords?</strong><br>I use bcryptjs. During registration password is hashed with salt rounds, and during login bcrypt compares entered password with stored hash.</li>
+      <li><strong>How are sessions managed?</strong><br>I use express-session and connect-mongo. Session ID is stored in browser cookie and session data is stored in MongoDB.</li>
+    </ol>
+    <h3>SOS Questions</h3>
+    <ol>
+      <li><strong>How does SOS capture location?</strong><br>The frontend uses browser geolocation with high accuracy. Coordinates and accuracy are submitted to backend hidden fields. If GPS fails, SOS still saves with state/city.</li>
+      <li><strong>What happens after SOS is saved?</strong><br>It is stored in MongoDB, an SSE event is published, optional SMS fallback is triggered, and the user gets success page.</li>
+      <li><strong>Can anyone update SOS location?</strong><br>No. The backend checks ownership using session user ID. Only the owner can update live location.</li>
+      <li><strong>How does volunteer help work?</strong><br>Nearby SOS page fetches requests from same state. A user cannot accept their own SOS. A volunteer can accept pending requests and mark them resolved.</li>
+      <li><strong>What if GPS is unavailable?</strong><br>The system still sends SOS using selected state/city and map fallback coordinates. It clearly marks fallback as approximate.</li>
+    </ol>
+    <h3>Alert Questions</h3>
+    <ol>
+      <li><strong>How are alerts filtered?</strong><br>User selected state is used to query MongoDB alerts and official RSS feed. City filtering is prepared but currently not enforced.</li>
+      <li><strong>How do you choose alert language?</strong><br>Priority is query parameter, logged-in user's language, session language, browser Accept-Language header, then English.</li>
+      <li><strong>What is popup alert?</strong><br>The controller sorts alerts by severity and latest date. The highest severity/latest alert becomes popup alert.</li>
+      <li><strong>Where do official alerts come from?</strong><br>From SACHET NDMA RSS feed. The app fetches XML, parses with xml2js, cleans HTML, and shows official feed items.</li>
+      <li><strong>How voice alert works?</strong><br>Frontend sends text and language to <code>/tts</code>. Backend calls Google TTS endpoint and returns MP3 audio.</li>
+    </ol>
+    <h3>Admin Questions</h3>
+    <ol>
+      <li><strong>How is admin protected?</strong><br>All admin routes use <code>requireAdmin</code>. If user is not logged in, redirect to login. If role is not admin, redirect to alerts.</li>
+      <li><strong>How is default admin created?</strong><br>After DB connection, <code>ensureDefaultAdmin</code> checks if admin email exists. If not, it creates one with hashed password.</li>
+      <li><strong>What does admin dashboard show?</strong><br>Total alerts, SOS counts, severity counts, pending/resolved SOS, latest records, safe users, need-help users, and map data.</li>
+      <li><strong>How are false SOS requests handled?</strong><br>Admin can mark verification status as False Alarm. Delete is allowed when it is false alarm or admin confirms false alarm.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>18. File-by-File Quick Explanation</h2>
+    <table>
+      <tr><th>File</th><th>Explain Like This</th></tr>
+      <tr><td><code>package.json</code></td><td>Lists project name, scripts, dependencies and dev dependency nodemon.</td></tr>
+      <tr><td><code>server.js</code></td><td>Main Express server setup, middleware, sessions, routes, 404, port listen.</td></tr>
+      <tr><td><code>config/db.js</code></td><td>MongoDB connection helper.</td></tr>
+      <tr><td><code>config/languages.js</code></td><td>Supported languages, message fields, browser language detection.</td></tr>
+      <tr><td><code>config/stateCoordinates.js</code></td><td>State center coordinates for maps/weather/fallback.</td></tr>
+      <tr><td><code>models/User.js</code></td><td>User schema with account, role, language, location and emergency contact.</td></tr>
+      <tr><td><code>models/Alert.js</code></td><td>Alert schema with severity, messages in many languages, location and precautions.</td></tr>
+      <tr><td><code>models/SOS.js</code></td><td>SOS schema with victim, location, status, volunteer, verification and admin note.</td></tr>
+      <tr><td><code>models/Resource.js</code></td><td>Safe zone/resource schema.</td></tr>
+      <tr><td><code>models/SafeCheck.js</code></td><td>User's safe/need-help response for a particular alert.</td></tr>
+      <tr><td><code>models/CheckInStatus.js</code></td><td>Latest safety status of each user.</td></tr>
+      <tr><td><code>controllers/authController.js</code></td><td>Register, login, logout and profile update logic.</td></tr>
+      <tr><td><code>controllers/alertController.js</code></td><td>Home, admin dashboard, alert CRUD, user alert list, alert details, safe marking.</td></tr>
+      <tr><td><code>controllers/sosController.js</code></td><td>Create SOS, update location, admin SOS list, verification, nearby API, SSE, accept/resolve/cancel.</td></tr>
+      <tr><td><code>controllers/resourceController.js</code></td><td>Admin CRUD for resources/safe zones.</td></tr>
+      <tr><td><code>controllers/statusController.js</code></td><td>Check-in API for safe/need-help status.</td></tr>
+      <tr><td><code>middleware/authMiddleware.js</code></td><td>Route guards for login and admin access.</td></tr>
+      <tr><td><code>routes/*.js</code></td><td>URL definitions that call controller methods.</td></tr>
+      <tr><td><code>services/translationService.js</code></td><td>Translation with cache and official alert translation.</td></tr>
+      <tr><td><code>services/officialAlertService.js</code></td><td>SACHET RSS fetch, XML parse, clean, normalize and deduplicate.</td></tr>
+      <tr><td><code>services/weatherService.js</code></td><td>Open-Meteo weather fetch, caching and fallback.</td></tr>
+      <tr><td><code>services/alertGuidanceService.js</code></td><td>Prepared action guidance based on disaster type and severity.</td></tr>
+      <tr><td><code>services/sosEventBus.js</code></td><td>Real-time SOS event emitter.</td></tr>
+      <tr><td><code>services/smsService.js</code></td><td>Optional SMS sending through Twilio or webhook.</td></tr>
+      <tr><td><code>services/adminSeedService.js</code></td><td>Creates default admin if missing.</td></tr>
+      <tr><td><code>public/js/main.js</code></td><td>Main browser interactions: maps, TTS, SOS GPS, check-in, filters, sharing, service worker.</td></tr>
+      <tr><td><code>public/js/sos.js</code></td><td>Nearby SOS live page, map, route, notifications, SSE and polling.</td></tr>
+      <tr><td><code>public/js/sos-live.js</code></td><td>Live victim location sharing after SOS.</td></tr>
+      <tr><td><code>public/css/style.css</code></td><td>Complete styling for layouts, cards, maps, forms, dashboard and responsive design.</td></tr>
+      <tr><td><code>public/sw.js</code></td><td>Service worker caching and notification click handling.</td></tr>
+      <tr><td><code>public/manifest.json</code></td><td>PWA metadata.</td></tr>
+      <tr><td><code>seed/seed.js</code>, <code>scripts/seed*.js</code></td><td>Demo data helpers.</td></tr>
+    </table>
+  </section>
+
+  <section class="page-break">
+    <h2>19. Practical Demo Script</h2>
+    <ol>
+      <li>Start MongoDB and run <code>npm run dev</code>.</li>
+      <li>Open <code>http://localhost:3000</code>.</li>
+      <li>Register a user with state and preferred language.</li>
+      <li>Log in and show the alerts page.</li>
+      <li>Change language and show translated alert/guidance.</li>
+      <li>Click listen to demonstrate text-to-speech.</li>
+      <li>Show alert map with alert markers and safe zones.</li>
+      <li>Use check-in buttons to mark Safe or Need Help.</li>
+      <li>Send SOS. Explain GPS permission and fallback behavior.</li>
+      <li>Open admin login and show dashboard/SOS page.</li>
+      <li>Show SOS verification, status update and map location.</li>
+      <li>Open nearby SOS page and show accept/resolve flow.</li>
+    </ol>
+    <div class="box warn">
+      <strong>Important practical note:</strong> Exact GPS works best on HTTPS or localhost. On deployed sites, use the HTTPS URL. If permission is blocked, browser settings must allow location.
+    </div>
+  </section>
+
+  <section>
+    <h2>20. Strengths, Limitations, and Future Scope</h2>
+    <h3>Strengths</h3>
+    <ul>
+      <li>Full-stack implementation with real database.</li>
+      <li>Role-based admin and user flows.</li>
+      <li>Multilingual disaster alerts.</li>
+      <li>Official alert feed integration.</li>
+      <li>SOS with GPS and fallback.</li>
+      <li>Real-time updates using SSE.</li>
+      <li>Safe zone maps and weather information.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>SMS works only when Twilio or webhook environment variables are configured.</li>
+      <li>Translation/TTS depends on external Google endpoints.</li>
+      <li>SSE event bus is in-memory, so for multiple server instances a shared pub/sub system would be better.</li>
+      <li>City filtering is present in structure but not fully enforced in alert/resource queries.</li>
+    </ul>
+    <h3>Future Scope</h3>
+    <ul>
+      <li>Add push notifications for alerts and SOS at larger scale.</li>
+      <li>Add verified government API integration beyond RSS.</li>
+      <li>Add admin analytics charts and export reports.</li>
+      <li>Add volunteer role separately from user/admin.</li>
+      <li>Add offline-first alert storage for disaster network failures.</li>
+      <li>Add multi-server real-time updates using Redis Pub/Sub.</li>
+    </ul>
+  </section>
+
+  <section class="page-break">
+    <h2>21. Final Short Explanation to Memorize</h2>
+    <p>My project Rakshak is a multilingual disaster alert and SOS platform. It is built using Node.js, Express.js, MongoDB, Mongoose, EJS, JavaScript, and Leaflet maps. Users can register, choose language and location, view local alerts, official SACHET alerts, weather, safety guidance, and safe zones. They can listen to alerts using text-to-speech, mark themselves safe or needing help, and send SOS with GPS location. Admin can manage alerts, resources, and SOS requests, verify false alarms, and monitor dashboard statistics. The project uses sessions for authentication, bcrypt for password security, MongoDB for data storage, external APIs for translation, weather, official alerts and routing, and Server Sent Events for real-time SOS updates.</p>
+  </section>
+</body>
+</html>

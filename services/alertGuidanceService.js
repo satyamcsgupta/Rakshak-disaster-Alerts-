@@ -142,6 +142,66 @@ const helplines = [
   { label: 'Disaster Helpline', number: '1078' }
 ];
 
+const localGuidanceTranslations = {
+  Marathi: {
+    'Stay alert and monitor official updates.': 'सतर्क रहा आणि अधिकृत सूचना तपासत रहा.',
+    'Keep your phone charged and essential items ready.': 'फोन चार्ज ठेवा आणि आवश्यक वस्तू तयार ठेवा.',
+    'Move to a safer place if local authorities advise it.': 'स्थानिक प्रशासनाने सांगितल्यास सुरक्षित ठिकाणी जा.',
+    'Do not spread unverified messages.': 'अप्रमाणित संदेश पसरवू नका.',
+    'Do not ignore local emergency instructions.': 'स्थानिक आपत्कालीन सूचनांकडे दुर्लक्ष करू नका.',
+    'Do not delay preparing your emergency kit.': 'आपत्कालीन किट तयार करण्यात उशीर करू नका.',
+    'Phone and charger': 'फोन आणि चार्जर',
+    'Medicines': 'औषधे',
+    'Drinking water': 'पिण्याचे पाणी',
+    'ID documents': 'ओळखपत्रे',
+    'Medium severity means conditions can worsen, so prepare early and stay alert.': 'मध्यम तीव्रतेचा अर्थ परिस्थिती बिघडू शकते, म्हणून लवकर तयारी करा आणि सतर्क रहा.',
+    'Keep emergency supplies, identity documents, and trusted contacts ready.': 'आपत्कालीन साहित्य, ओळखपत्रे आणि विश्वासू संपर्क तयार ठेवा.'
+  },
+  Hindi: {
+    'Stay alert and monitor official updates.': 'सतर्क रहें और आधिकारिक सूचनाएं देखते रहें.',
+    'Keep your phone charged and essential items ready.': 'फोन चार्ज रखें और जरूरी सामान तैयार रखें.',
+    'Move to a safer place if local authorities advise it.': 'स्थानीय प्रशासन कहे तो सुरक्षित स्थान पर जाएं.',
+    'Do not spread unverified messages.': 'अपुष्ट संदेश न फैलाएं.',
+    'Do not ignore local emergency instructions.': 'स्थानीय आपातकालीन निर्देशों को नजरअंदाज न करें.',
+    'Do not delay preparing your emergency kit.': 'आपातकालीन किट तैयार करने में देरी न करें.',
+    'Phone and charger': 'फोन और चार्जर',
+    'Medicines': 'दवाइयां',
+    'Drinking water': 'पीने का पानी',
+    'ID documents': 'पहचान दस्तावेज',
+    'Medium severity means conditions can worsen, so prepare early and stay alert.': 'मध्यम गंभीरता का मतलब है कि स्थिति बिगड़ सकती है, इसलिए जल्दी तैयारी करें और सतर्क रहें.',
+    'Keep emergency supplies, identity documents, and trusted contacts ready.': 'आपातकालीन सामान, पहचान दस्तावेज और भरोसेमंद संपर्क तैयार रखें.'
+  },
+  Gujarati: {
+    'Stay alert and monitor official updates.': 'સતર્ક રહો અને સત્તાવાર અપડેટ્સ તપાસતા રહો.',
+    'Keep your phone charged and essential items ready.': 'ફોન ચાર્જ રાખો અને જરૂરી વસ્તુઓ તૈયાર રાખો.',
+    'Move to a safer place if local authorities advise it.': 'સ્થાનિક સત્તાવાળાઓ કહે તો સુરક્ષિત જગ્યાએ જાઓ.'
+  },
+  Bengali: {
+    'Stay alert and monitor official updates.': 'সতর্ক থাকুন এবং সরকারি আপডেট দেখুন.',
+    'Keep your phone charged and essential items ready.': 'ফোন চার্জ রাখুন এবং জরুরি জিনিস প্রস্তুত রাখুন.',
+    'Move to a safer place if local authorities advise it.': 'স্থানীয় কর্তৃপক্ষ বললে নিরাপদ স্থানে যান.'
+  },
+  Tamil: {
+    'Stay alert and monitor official updates.': 'எச்சரிக்கையாக இருந்து அதிகாரப்பூர்வ தகவல்களை கவனியுங்கள்.',
+    'Keep your phone charged and essential items ready.': 'தொலைபேசியை சார்ஜ் செய்து அவசிய பொருட்களை தயார் வைத்திருங்கள்.',
+    'Move to a safer place if local authorities advise it.': 'உள்ளூர் அதிகாரிகள் அறிவுறுத்தினால் பாதுகாப்பான இடத்திற்கு செல்லுங்கள்.'
+  },
+  Kannada: {
+    'Stay alert and monitor official updates.': 'ಎಚ್ಚರಿಕೆಯಿಂದಿರಿ ಮತ್ತು ಅಧಿಕೃತ ನವೀಕರಣಗಳನ್ನು ಗಮನಿಸಿ.',
+    'Keep your phone charged and essential items ready.': 'ಫೋನ್ ಚಾರ್ಜ್ ಇಡಿ ಮತ್ತು ಅಗತ್ಯ ವಸ್ತುಗಳನ್ನು ಸಿದ್ಧವಾಗಿಡಿ.',
+    'Move to a safer place if local authorities advise it.': 'ಸ್ಥಳೀಯ ಅಧಿಕಾರಿಗಳು ಸೂಚಿಸಿದರೆ ಸುರಕ್ಷಿತ ಸ್ಥಳಕ್ಕೆ ಹೋಗಿ.'
+  },
+  Malayalam: {
+    'Stay alert and monitor official updates.': 'ജാഗ്രത പാലിച്ച് ഔദ്യോഗിക വിവരങ്ങൾ ശ്രദ്ധിക്കുക.',
+    'Keep your phone charged and essential items ready.': 'ഫോൺ ചാർജിൽ വച്ച് ആവശ്യ സാധനങ്ങൾ തയ്യാറാക്കി വയ്ക്കുക.',
+    'Move to a safer place if local authorities advise it.': 'പ്രാദേശിക അധികാരികൾ നിർദേശിച്ചാൽ സുരക്ഷിത സ്ഥലത്തേക്ക് മാറുക.'
+  }
+};
+
+const translateGuidanceText = async (text, language) => (
+  localGuidanceTranslations[language]?.[text] || translateText(text, language)
+);
+
 const normalizeDisasterType = (value = '') => value.toLowerCase().trim();
 
 const findGuidanceTemplate = (disasterType) => {
@@ -166,7 +226,13 @@ const simplifyMessage = (message, severity) => {
   return `${firstSentence.slice(0, 137).trim()}...`;
 };
 
-const translateList = async (items, language) => Promise.all(items.map((item) => translateText(item, language)));
+const translateList = async (items, language) => {
+  const translated = [];
+  for (const item of items) {
+    translated.push(await translateGuidanceText(item, language));
+  }
+  return translated;
+};
 
 const buildGuidance = async ({ disasterType, severity, message, precautions }, language = 'English') => {
   const template = findGuidanceTemplate(disasterType);
@@ -185,8 +251,8 @@ const buildGuidance = async ({ disasterType, severity, message, precautions }, l
     checklist
   ] = await Promise.all([
     translateText(`Quick summary: ${summarySource}`, language),
-    translateText(severityNote, language),
-    translateText(preparednessNote, language),
+    translateGuidanceText(severityNote, language),
+    translateGuidanceText(preparednessNote, language),
     translateList(template.immediateActions, language),
     translateList(template.avoidActions, language),
     translateList(template.checklist, language)

@@ -25,14 +25,14 @@ const SOS_LOCATION_TIMEOUT_MS = 7000;
 const SOS_MIN_GPS_WAIT_MS = 1200;
 
 const stateCenters = [
-  { state: 'Maharashtra', latitude: 19.75, longitude: 75.71 },
-  { state: 'Gujarat', latitude: 22.26, longitude: 71.19 },
-  { state: 'Karnataka', latitude: 15.31, longitude: 75.71 },
-  { state: 'Kerala', latitude: 10.85, longitude: 76.27 },
-  { state: 'Tamil Nadu', latitude: 11.13, longitude: 78.65 },
-  { state: 'Delhi', latitude: 28.61, longitude: 77.20 },
-  { state: 'Rajasthan', latitude: 27.02, longitude: 74.21 },
-  { state: 'West Bengal', latitude: 22.98, longitude: 87.85 }
+  { state: 'Maharashtra', language: 'Marathi', latitude: 19.75, longitude: 75.71 },
+  { state: 'Gujarat', language: 'Gujarati', latitude: 22.26, longitude: 71.19 },
+  { state: 'Karnataka', language: 'Kannada', latitude: 15.31, longitude: 75.71 },
+  { state: 'Kerala', language: 'Malayalam', latitude: 10.85, longitude: 76.27 },
+  { state: 'Tamil Nadu', language: 'Tamil', latitude: 11.13, longitude: 78.65 },
+  { state: 'Delhi', language: 'Hindi', latitude: 28.61, longitude: 77.20 },
+  { state: 'Rajasthan', language: 'Hindi', latitude: 27.02, longitude: 74.21 },
+  { state: 'West Bengal', language: 'Bengali', latitude: 22.98, longitude: 87.85 }
 ];
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -72,6 +72,25 @@ const getLastKnownLocation = () => {
     return saved;
   } catch (error) {
     return null;
+  }
+};
+
+const applyNearestStateAndLanguage = (latitude, longitude) => {
+  const nearest = stateCenters.map(s => ({
+    ...s, dist: Math.sqrt(Math.pow(s.latitude - latitude, 2) + Math.pow(s.longitude - longitude, 2))
+  })).sort((a, b) => a.dist - b.dist)[0];
+
+  const stateSelect = document.getElementById('stateSelect');
+  const languageSelect = document.getElementById('languageSelect');
+  if (stateSelect) {
+    stateSelect.value = nearest.state;
+    if (languageSelect) {
+      languageSelect.value = nearest.language;
+    }
+    showToast(`Using ${nearest.state}. Language changed to ${nearest.language}.`, 'success');
+    handleFilterSubmit();
+  } else {
+    window.location.href = `/alerts?state=${encodeURIComponent(nearest.state)}&language=${encodeURIComponent(nearest.language)}`;
   }
 };
 
@@ -866,27 +885,28 @@ const rebindEvents = () => {
       if (!navigator.geolocation) return showToast('Geolocation not supported.', 'warning');
       useLoc.textContent = 'Detecting...';
       useLoc.disabled = true;
+
+      const cachedLocation = getLastKnownLocation();
+      if (cachedLocation) {
+        applyNearestStateAndLanguage(Number(cachedLocation.latitude), Number(cachedLocation.longitude));
+        useLoc.textContent = 'Use My Location';
+        useLoc.disabled = false;
+        return;
+      }
+
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          const nearest = stateCenters.map(s => ({
-            ...s, dist: Math.sqrt(Math.pow(s.latitude - lat, 2) + Math.pow(s.longitude - lon, 2))
-          })).sort((a, b) => a.dist - b.dist)[0];
-          
-          const stateSelect = document.getElementById('stateSelect');
-          if (stateSelect) {
-            stateSelect.value = nearest.state;
-            handleFilterSubmit(); // Use AJAX to switch
-          } else {
-            window.location.href = `/alerts?state=${nearest.state}`;
-          }
+          saveLastKnownLocation({ latitude: lat, longitude: lon, accuracy: pos.coords.accuracy || '' }, 'gps');
+          applyNearestStateAndLanguage(lat, lon);
           useLoc.textContent = 'Use My Location'; useLoc.disabled = false;
         },
         () => {
           showToast('Location denied.', 'warning');
           useLoc.textContent = 'Use My Location'; useLoc.disabled = false;
-        }
+        },
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 10 * 60 * 1000 }
       );
     };
   }

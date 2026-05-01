@@ -61,14 +61,19 @@ const translateText = async (text, language) => {
 const translateOfficialAlerts = async (alerts, language) => {
   if (language === 'English') return alerts;
 
-  return Promise.all(alerts.map(async (alert) => ({
-    ...alert,
-    originalTitle: alert.title,
-    originalDescription: alert.description,
-    title: await translateText(alert.title, language),
-    description: await translateText(alert.description, language),
-    translatedLanguage: language
-  })));
+  const translatedAlerts = [];
+  for (const alert of alerts) {
+    translatedAlerts.push({
+      ...alert,
+      originalTitle: alert.title,
+      originalDescription: alert.description,
+      title: await translateText(alert.title, language),
+      description: await translateText(alert.description, language),
+      translatedLanguage: language
+    });
+  }
+
+  return translatedAlerts;
 };
 
 module.exports = {

@@ -1,8 +1,8 @@
-const CACHE_NAME = 'rakshak-v10';
+const CACHE_NAME = 'rakshak-v11';
 const ASSETS_TO_CACHE = [
   '/',
   '/css/style.css?v=6',
-  '/js/main.js?v=9'
+  '/js/main.js?v=16'
 ];
 
 self.addEventListener('install', (event) => {
